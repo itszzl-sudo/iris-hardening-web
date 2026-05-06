@@ -1,0 +1,39 @@
+# Iris Secure Gateway 配置示例
+
+[server]
+host = "127.0.0.1"
+port = 8080
+base_dir = "./data"
+assets_dir = "./assets"
+
+[encryption]
+key_file = "key.txt"
+algorithm = "aes-256-gcm"
+
+[key_rotation]
+enabled = true
+wasm_gateway_url = "http://127.0.0.1:9090"
+check_interval_seconds = 3600
+update_before_expiry_hours = 2
+
+# 文件名映射: 加密名 -> 真实文件名
+[file_mappings]
+"abc123" = "secret/document.pdf"
+"def456" = "private/data.json"
+"xyz789" = "config/settings.toml"
+
+# API 路由转发
+[[api_routes]]
+pattern = "^/api/v1/.*"
+target = "http://localhost:3000"
+methods = ["GET", "POST", "PUT", "DELETE"]
+
+[[api_routes]]
+pattern = "^/auth/.*"
+target = "http://auth-server:8081"
+methods = ["POST"]
+
+[[api_routes]]
+pattern = "^/static/.*"
+target = "http://cdn-server:9000"
+methods = ["GET"]

@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Iris Secure Gateway</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: white;
+        }
+        #app {
+            text-align: center;
+            padding: 2rem;
+            max-width: 800px;
+        }
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+            background: linear-gradient(90deg, #4facfe 0%, #00f2fe 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        #status {
+            margin: 2rem 0;
+            padding: 1.5rem;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            backdrop-filter: blur(10px);
+        }
+        .status-item {
+            margin: 0.5rem 0;
+            font-size: 0.9rem;
+        }
+        .status-label {
+            color: #aaa;
+            margin-right: 0.5rem;
+        }
+        .status-value {
+            font-weight: bold;
+        }
+        .status-value.success { color: #4caf50; }
+        .status-value.error { color: #f44336; }
+        .status-value.warning { color: #ff9800; }
+        
+        #sources {
+            margin: 1rem 0;
+            padding: 1rem;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+        }
+        .source-item {
+            padding: 0.5rem;
+            margin: 0.5rem 0;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 4px;
+            text-align: left;
+            font-size: 0.85rem;
+        }
+        .source-url {
+            color: #4facfe;
+            word-break: break-all;
+        }
+        
+        button {
+            background: linear-gradient(90deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            margin: 1rem 0.5rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: bold;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(79, 172, 254, 0.4);
+        }
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .info {
+            margin-top: 2rem;
+            font-size: 0.85rem;
+            color: #888;
+        }
+        .info a {
+            color: #4facfe;
+            text-decoration: none;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .loading {
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <h1>Iris Secure Gateway</h1>
+        
+        <div id="status">
+            <div class="status-item">
+                <span class="status-label">状态:</span>
+                <span id="status-text" class="status-value loading">准备加载...</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">加载源:</span>
+                <span id="load-source" class="status-value">-</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">尝试次数:</span>
+                <span id="attempts" class="status-value">0</span>
+            </div>
+        </div>
+        
+        <div id="sources">
+            <div style="font-weight: bold; margin-bottom: 0.5rem;">下载源列表:</div>
+            <div class="source-item">
+                <span class="status-label">源 1:</span>
+                <span class="source-url">./iris.wasm</span>
+                <span id="source1-status"></span>
+            </div>
+            <div class="source-item">
+                <span class="status-label">源 2:</span>
+                <span class="source-url">https://tls.irisverse.org/iris.wasm</span>
+                <span id="source2-status"></span>
+            </div>
+            <div class="source-item">
+                <span class="status-label">源 3:</span>
+                <span class="source-url">https://tls.irisverse.org:8443/iris.wasm</span>
+                <span id="source3-status"></span>
+            </div>
+        </div>
+        
+        <div>
+            <button id="load-btn" onclick="loadWasm()">加载 Iris WASM</button>
+            <button id="test-btn" onclick="testDecryption()">测试解密</button>
+        </div>
+        
+        <div class="info">
+            <p>版本: <span id="version">v0.1.1</span></p>
+            <p>文档: <a href="/RELEASE.md">RELEASE.md</a></p>
+        </div>
+    </div>
+
+    <script src="init_iris.js"></script>
+    <script>
+        const statusEl = document.getElementById('status-text');
+        const sourceEl = document.getElementById('load-source');
+        const attemptsEl = document.getElementById('attempts');
+
+        async function loadWasm() {
+            const loadBtn = document.getElementById('load-btn');
+            loadBtn.disabled = true;
+            
+            try {
+                statusEl.textContent = '正在加载...';
+                statusEl.className = 'status-value loading';
+                
+                const result = await initIris({
+                    key: window.irisKey
+                });
+                
+                statusEl.textContent = '加载成功';
+                statusEl.className = 'status-value success';
+                
+                sourceEl.textContent = `源 ${result.loadAttempts}`;
+                attemptsEl.textContent = result.loadAttempts;
+                
+                // 更新源状态
+                for (let i = 1; i <= 3; i++) {
+                    const statusSpan = document.getElementById(`source${i}-status`);
+                    if (i === result.loadAttempts) {
+                        statusSpan.innerHTML = ' <span style="color: #4caf50;">✓ 成功</span>';
+                    } else if (i < result.loadAttempts) {
+                        statusSpan.innerHTML = ' <span style="color: #f44336;">✗ 失败</span>';
+                    }
+                }
+                
+                console.log('Iris WASM 加载成功:', result);
+                
+            } catch (error) {
+                statusEl.textContent = '加载失败';
+                statusEl.className = 'status-value error';
+                
+                console.error('加载失败:', error);
+                alert(`加载失败: ${error.message}`);
+                
+            } finally {
+                loadBtn.disabled = false;
+            }
+        }
+
+        async function testDecryption() {
+            try {
+                const response = await fetch('/internal/decrypt', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ data: 'dGVzdA==' }) // base64 "test"
+                });
+                
+                if (response.ok) {
+                    alert('解密接口正常');
+                } else {
+                    alert(`解密接口返回: ${response.status}`);
+                }
+            } catch (error) {
+                alert(`解密接口错误: ${error.message}`);
+            }
+        }
+
+        // 页面加载后自动加载
+        // loadWasm();
+    </script>
+</body>
+</html>

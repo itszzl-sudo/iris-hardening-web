@@ -1,0 +1,15 @@
+# Iris WASM Gateway 配置
+
+[server]
+host = "127.0.0.1"
+port = 9090
+wasm_path = "iris.wasm"
+
+[key]
+key_dir = "keys"
+validity_hours = 24
+rotation_margin_hours = 2
+
+[encrypt_service]
+url = "http://127.0.0.1:8080"
+update_key_endpoint = "/internal/update-key"
