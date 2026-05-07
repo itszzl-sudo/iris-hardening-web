@@ -1,0 +1,222 @@
+name: WASM Build and Deploy
+
+on:
+  # 定时触发已禁用 - 仅手动触发
+  # schedule:
+  #   - cron: '*/30 * * * *'
+  
+  workflow_dispatch:
+    inputs:
+      force_rotation:
+        description: 'Force key rotation'
+        required: false
+        default: 'false'
+        type: boolean
+  
+  # 代码推送触发已禁用
+  # push:
+  #   branches: [main]
+  #   paths:
+  #     - 'crates/iris-wasm/**'
+  #     - 'crates/iris-wasm-gateway/**'
+  #     - '.github/workflows/wasm-deploy.yml'
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  check-keys:
+    runs-on: ubuntu-latest
+    outputs:
+      need_rotation: ${{ steps.check.outputs.need_rotation }}
+      current_key_id: ${{ steps.check.outputs.key_id }}
+    
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      - name: Restore keys cache
+        uses: actions/cache@v3
+        with:
+          path: crates/iris-wasm-gateway/keys/
+          key: wasm-keys-${{ github.run_number }}
+          restore-keys: wasm-keys-
+
+      - name: Install jq
+        run: sudo apt-get install -y jq
+
+      - name: Check key expiry
+        id: check
+        run: |
+          cd crates/iris-wasm-gateway
+          
+          # 检查密钥文件是否存在
+          if [ ! -f "keys/metadata.json" ]; then
+            echo "No keys found, need rotation"
+            echo "need_rotation=true" >> $GITHUB_OUTPUT
+            echo "key_id=none" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          
+          # 解析过期时间
+          EXPIRY=$(cat keys/metadata.json | jq -r '.current.expires_at')
+          KEY_ID=$(cat keys/metadata.json | jq -r '.current.id')
+          
+          echo "📊 Current key: $KEY_ID"
+          echo "📅 Expires at: $EXPIRY"
+          
+          # 转换为时间戳比较
+          EXPIRY_TS=$(date -d "$EXPIRY" +%s)
+          NOW_TS=$(date -u +%s)
+          THRESHOLD_TS=$((NOW_TS + 7200))
+          
+          echo "⏰ Now: $(date -u -d @$NOW_TS +%Y-%m-%dT%H:%M:%SZ)"
+          echo "⏰ Threshold: $(date -u -d @$THRESHOLD_TS +%Y-%m-%dT%H:%M:%SZ)"
+          
+          if [ "$EXPIRY_TS" -lt "$THRESHOLD_TS" ]; then
+            echo "⚠️ Key expiring soon, need rotation"
+            echo "need_rotation=true" >> $GITHUB_OUTPUT
+          else
+            echo "✅ Key still valid"
+            echo "need_rotation=false" >> $GITHUB_OUTPUT
+          fi
+          
+          echo "key_id=$KEY_ID" >> $GITHUB_OUTPUT
+
+      - name: Force rotation check
+        if: github.event.inputs.force_rotation == 'true'
+        run: |
+          echo "🔄 Force rotation requested"
+          echo "need_rotation=true" >> $GITHUB_OUTPUT
+
+  build-and-deploy:
+    needs: check-keys
+    if: needs.check-keys.outputs.need_rotation == 'true'
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Install wasm-pack
+        run: |
+          curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+          wasm-pack --version
+
+      - name: Cache cargo
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      - name: Restore keys cache
+        uses: actions/cache@v3
+        with:
+          path: crates/iris-wasm-gateway/keys/
+          key: wasm-keys-${{ github.run_number }}
+          restore-keys: wasm-keys-
+
+      - name: Build iris-wasm-gateway
+        run: |
+          cd crates/iris-wasm-gateway
+          cargo build --release
+
+      - name: Generate WASM with obfuscated key
+        run: |
+          cd crates/iris-wasm-gateway
+          
+          mkdir -p wasm
+          
+          cargo run --bin iris-wasm-cli -- generate \
+            --config config.example.toml \
+            --output wasm/iris.wasm
+          
+          ls -lh wasm/
+          echo "📦 WASM size: $(wc -c < wasm/iris.wasm) bytes"
+
+      - name: Deploy to Cloudflare Pages
+        id: deploy
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy crates/iris-wasm-gateway/wasm --project-name=iris-wasm
+
+      - name: Save keys cache
+        uses: actions/cache/save@v3
+        with:
+          path: crates/iris-wasm-gateway/keys/
+          key: wasm-keys-${{ github.run_number }}
+
+      - name: Commit key metadata
+        run: |
+          git config user.name "GitHub Actions Bot"
+          git config user.email "actions@github.com"
+          
+          cd crates/iris-wasm-gateway
+          
+          if [ -f "keys/metadata.json" ]; then
+            git add keys/metadata.json
+            git commit -m "chore: update key metadata [skip ci]" || echo "No changes"
+            git push
+          fi
+
+      - name: Upload WASM artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: iris-wasm-${{ github.run_number }}
+          path: crates/iris-wasm-gateway/wasm/iris.wasm
+          retention-days: 7
+
+      - name: Summary
+        if: success()
+        run: |
+          echo "## ✅ Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Run Number**: ${{ github.run_number }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Key ID**: ${{ needs.check-keys.outputs.current_key_id }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **WASM Size**: $(wc -c < crates/iris-wasm-gateway/wasm/iris.wasm) bytes" >> $GITHUB_STEP_SUMMARY
+          echo "- **Timestamp**: $(date -u +%Y-%m-%dT%H:%M:%SZ)" >> $GITHUB_STEP_SUMMARY
+
+  notify-failure:
+    needs: build-and-deploy
+    if: failure()
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Failure Summary
+        run: |
+          echo "## ❌ Deployment Failed" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Run Number**: ${{ github.run_number }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Timestamp**: $(date -u +%Y-%m-%dT%H:%M:%SZ)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Check the workflow logs for details." >> $GITHUB_STEP_SUMMARY

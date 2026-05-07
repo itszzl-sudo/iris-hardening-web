@@ -10,6 +10,10 @@ pub struct Config {
     pub server: ServerConfig,
     pub key: KeyConfig,
     pub encrypt_service: EncryptServiceConfig,
+    #[serde(default)]
+    pub scheduler: SchedulerConfig,
+    #[serde(default)]
+    pub cloudflare_config_path: Option<PathBuf>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -32,6 +36,39 @@ pub struct EncryptServiceConfig {
     pub update_key_endpoint: String,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CloudflareConfig {
+    pub api_token: String,
+    pub account_id: String,
+    pub project_name: String,
+    #[serde(default)]
+    pub deployment_branch: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SchedulerConfig {
+    #[serde(default = "default_check_interval")]
+    pub check_interval_minutes: u64,
+    #[serde(default = "default_lead_time")]
+    pub generation_lead_time_hours: u64,
+    #[serde(default = "default_wasm_output_dir")]
+    pub wasm_output_dir: PathBuf,
+}
+
+fn default_check_interval() -> u64 { 30 }
+fn default_lead_time() -> u64 { 2 }
+fn default_wasm_output_dir() -> PathBuf { PathBuf::from("wasm") }
+
+impl Default for SchedulerConfig {
+    fn default() -> Self {
+        Self {
+            check_interval_minutes: 30,
+            generation_lead_time_hours: 2,
+            wasm_output_dir: PathBuf::from("wasm"),
+        }
+    }
+}
+
 impl Config {
     pub fn from_file(path: &str) -> Result<Self> {
         let content = std::fs::read_to_string(path)
@@ -39,6 +76,20 @@ impl Config {
         
         toml::from_str(&content)
             .map_err(|e| crate::Error::Config(format!("Failed to parse config: {}", e)))
+    }
+    
+    pub fn load_cloudflare_config(&self) -> Result<Option<CloudflareConfig>> {
+        if let Some(ref cf_path) = self.cloudflare_config_path {
+            let content = std::fs::read_to_string(cf_path)
+                .map_err(|e| crate::Error::Config(format!("Failed to read Cloudflare config: {}", e)))?;
+            
+            let config: CloudflareConfig = toml::from_str(&content)
+                .map_err(|e| crate::Error::Config(format!("Failed to parse Cloudflare config: {}", e)))?;
+            
+            Ok(Some(config))
+        } else {
+            Ok(None)
+        }
     }
     
     pub fn validity_duration(&self) -> Duration {
@@ -67,6 +118,8 @@ impl Default for Config {
                 url: "http://127.0.0.1:8080".to_string(),
                 update_key_endpoint: "/internal/update-key".to_string(),
             },
+            scheduler: SchedulerConfig::default(),
+            cloudflare_config_path: None,
         }
     }
 }

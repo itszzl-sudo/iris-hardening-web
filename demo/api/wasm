@@ -1,0 +1,93 @@
+// Iris WASM Proxy v0.1.1
+// Key: Obfuscated and distributed
+// Expires: 2026-05-08T04:47:27.830454200+00:00
+
+const CONFIG = '{"checksum":4133497600,"encrypt_service_url":"http://127.0.0.1:8080","expires_at":"2026-05-08T04:47:27.830454200+00:00","key_id":"663750b1-8c19-47a3-89a7-ef51c35b288c","shards":[{"data":"2bd8007b77440394","index":0,"xor_mask":"3c5c4065cc7ee02c"},{"data":"339fcd842cc9515f","index":1,"xor_mask":"8d37feadee1f443d"},{"data":"151a04088d12878f","index":2,"xor_mask":"7b759e046ba0c40f"},{"data":"9d12e5354fd5c0fd","index":3,"xor_mask":"23fd0db46d80ab1f"}],"version":1}';
+
+export function init() {
+    console.log("Iris WASM initialized");
+    return CONFIG;
+}
+
+export function getEncryptedUrl(originalUrl) {
+    const config = JSON.parse(CONFIG);
+    const hash = sha256(originalUrl);
+    return config.encrypt_service_url + "/" + hash;
+}
+
+export async function proxyRequest(request) {
+    console.log("Proxying request");
+    const config = JSON.parse(CONFIG);
+    const url = request.url;
+    const encryptedUrl = getEncryptedUrl(url);
+
+    const response = await fetch(encryptedUrl, {
+        headers: {
+            'X-Iris-Key-Id': config.key_id
+        }
+    });
+
+    const encryptedData = await response.arrayBuffer();
+    const decryptedData = decryptData(new Uint8Array(encryptedData));
+
+    return new Response(decryptedData);
+}
+
+export function decryptData(encrypted) {
+    const config = JSON.parse(CONFIG);
+    const key = reconstructKey(config.shards, config.checksum);
+    const decrypted = aesDecrypt(key, encrypted);
+    return decrypted;
+}
+
+function reconstructKey(shards, expectedChecksum) {
+    const key = [];
+
+    shards.sort((a, b) => a.index - b.index);
+
+    const _dummy1 = (0x45 ^ 0x23);
+    const _dummy2 = [0x12, 0x34, 0x56].reduce((a, b) => a + b, 0);
+
+    for (const shard of shards) {
+        const data = hexDecode(shard.data);
+        const mask = hexDecode(shard.xor_mask);
+        for (let i = 0; i < data.length; i++) {
+            key.push(data[i] ^ mask[i]);
+        }
+    }
+
+    const _dummy3 = "decoy".length ^ 0xFF;
+
+    const checksum = calculateChecksum(key);
+    if (checksum !== expectedChecksum) {
+        throw new Error("Key validation failed");
+    }
+
+    return new Uint8Array(key);
+}
+
+function calculateChecksum(key) {
+    let hash = 0;
+    for (const byte of key) {
+        hash = ((hash << 5) - hash + byte) | 0;
+    }
+    return hash >>> 0;
+}
+
+function hexDecode(hex) {
+    const bytes = [];
+    for (let i = 0; i < hex.length; i += 2) {
+        bytes.push(parseInt(hex.substr(i, 2), 16));
+    }
+    return bytes;
+}
+
+function sha256(input) {
+    // Simplified - use Web Crypto API in production
+    return input;
+}
+
+function aesDecrypt(key, ciphertext) {
+    // Simplified - use Web Crypto API in production
+    return ciphertext;
+}

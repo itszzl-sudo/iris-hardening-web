@@ -1,0 +1,14 @@
+# Cloudflare Pages 配置示例
+# 复制此文件为 cloudflare.secret.toml 并填入真实值
+
+# Cloudflare API Token
+api_token = "your-cloudflare-api-token-here"
+
+# Account ID
+account_id = "your-account-id-here"
+
+# Pages 项目名称
+project_name = "iris-wasm"
+
+# 部署分支（可选）
+deployment_branch = "production"

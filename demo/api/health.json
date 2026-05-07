@@ -1,0 +1,14 @@
+{
+  "status": "healthy",
+  "version": "0.1.1",
+  "uptime": 86400,
+  "last_rotation": "2026-05-07T04:47:27Z",
+  "next_rotation": "2026-05-08T02:47:27Z",
+  "total_rotations": 1,
+  "checks": {
+    "key_manager": "ok",
+    "wasm_generator": "ok",
+    "cloudflare_api": "ok",
+    "key_validity": "valid"
+  }
+}

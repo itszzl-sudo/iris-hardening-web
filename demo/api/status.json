@@ -1,0 +1,32 @@
+{
+  "key_id": "663750b1-8c19-47a3-89a7-ef51c35b288c",
+  "algorithm": "aes-256-gcm",
+  "shards": 4,
+  "created_at": "2026-05-07T04:47:27Z",
+  "expires_at": "2026-05-08T04:47:27Z",
+  "status": "active",
+  "checksum": 4133497600,
+  "version": 1,
+  "shard_data": [
+    {
+      "index": 0,
+      "data": "2bd8007b77440394",
+      "mask": "3c5c4065cc7ee02c"
+    },
+    {
+      "index": 1,
+      "data": "339fcd842cc9515f",
+      "mask": "8d37feadee1f443d"
+    },
+    {
+      "index": 2,
+      "data": "151a04088d12878f",
+      "mask": "7b759e046ba0c40f"
+    },
+    {
+      "index": 3,
+      "data": "9d12e5354fd5c0fd",
+      "mask": "23fd0db46d80ab1f"
+    }
+  ]
+}

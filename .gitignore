@@ -15,3 +15,11 @@ Thumbs.db
 
 # CodeArts
 .codeartsdoer/
+
+# Sensitive configs
+cloudflare.secret.toml
+*.secret.toml
+*.secret.json
+keys/
+*.key
+*.pem

@@ -2,9 +2,18 @@
 
 pub mod config;
 pub mod key_manager;
+pub mod key_obfuscation;
+pub mod wasm_generator;
+pub mod wasm_proxy;
+pub mod cloudflare;
+pub mod scheduler;
 
 pub use config::Config;
 pub use key_manager::{KeyManager, KeyPair};
+pub use key_obfuscation::{KeyObfuscator, ObfuscatedKey};
+pub use wasm_generator::WasmGenerator;
+pub use cloudflare::CloudflareUploader;
+pub use scheduler::WasmScheduler;
 
 use thiserror::Error;
 

@@ -13,3 +13,12 @@ rotation_margin_hours = 2
 [encrypt_service]
 url = "http://127.0.0.1:8080"
 update_key_endpoint = "/internal/update-key"
+
+[scheduler]
+check_interval_minutes = 30
+generation_lead_time_hours = 2
+wasm_output_dir = "wasm"
+
+# Cloudflare 配置文件路径（敏感信息分离）
+# 复制 cloudflare.example.toml 为 cloudflare.secret.toml 并填入真实值
+cloudflare_config_path = "cloudflare.secret.toml"

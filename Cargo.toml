@@ -1,6 +1,6 @@
 [workspace]
 members = [
-  "crates/iris-wasm",
+  # "crates/iris-wasm",              # 临时移除，待 iris-engine 可用后恢复
   "crates/iris-secure-gateway",
   "crates/iris-wasm-gateway",
 ]

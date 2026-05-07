@@ -15,6 +15,10 @@ crate-type = ["cdylib", "rlib"]
 name = "iris-wasm-gateway"
 path = "src/main.rs"
 
+[[bin]]
+name = "iris-wasm-cli"
+path = "src/cli.rs"
+
 [dependencies]
 tokio = { version = "1", features = ["full"] }
 warp = "0.3"
@@ -30,16 +34,20 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 anyhow = "1"
 thiserror = "1"
 chrono = { version = "0.4", features = ["serde"] }
-reqwest = "0.11"
+reqwest = { version = "0.11", features = ["multipart", "json"] }
 uuid = { version = "1", features = ["v4", "serde"] }
 rand = "0.8"
 wasm-bindgen = "0.2.89"
+wasm-bindgen-futures = "0.4"
 js-sys = "0.3"
 web-sys = { version = "0.3", features = [
     "Window",
     "Document",
     "Request",
     "Response",
+    "ResponseInit",
     "Headers",
     "console",
 ] }
+console_error_panic_hook = "0.1"
+clap = { version = "4", features = ["derive"] }
