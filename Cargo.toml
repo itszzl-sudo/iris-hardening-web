@@ -10,7 +10,7 @@ resolver = "2"
 version = "0.1.1"
 edition = "2021"
 authors = ["Iris Team"]
-license = "MIT OR Apache-2.0"
+license = "MIT"
 repository = "https://github.com/itszzl-sudo/iris"
 rust-version = "1.78"
 
