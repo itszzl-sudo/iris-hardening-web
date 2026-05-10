@@ -2,9 +2,16 @@
 
 pub mod config;
 pub mod key_manager;
+pub mod notify;
+pub mod server;
+pub mod wasm_generator;
+pub mod wasm_proxy;
 
 pub use config::Config;
 pub use key_manager::{KeyManager, KeyPair};
+pub use notify::Notifier;
+pub use server::GatewayServer;
+pub use wasm_generator::WasmGenerator;
 
 use thiserror::Error;
 
@@ -12,15 +19,18 @@ use thiserror::Error;
 pub enum Error {
     #[error("IO error: {0}")]
     Io(#[from] std::io::Error),
-    
+
     #[error("Key error: {0}")]
     Key(String),
-    
+
     #[error("Config error: {0}")]
     Config(String),
-    
+
     #[error("JSON error: {0}")]
     Json(#[from] serde_json::Error),
+
+    #[error("HTTP error: {0}")]
+    Http(String),
 }
 
 pub type Result<T> = std::result::Result<T, Error>;

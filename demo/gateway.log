@@ -1,0 +1,35 @@
+[2m2026-05-10T03:14:19.362452Z[0m [33m WARN[0m [2miris_gateway[0m[2m:[0m Config file 'config.toml' not found (Config error: Failed to parse config: TOML parse error at line 1, column 1
+  |
+1 | internal_token = "demo-token-2024"
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+missing field `api_routes`
+), using zero-config defaults
+[2m2026-05-10T03:14:19.362496Z[0m [32m INFO[0m [2miris_gateway[0m[2m:[0m Starting Iris Gateway v0.1.1
+[2m2026-05-10T03:14:19.362502Z[0m [32m INFO[0m [2miris_gateway[0m[2m:[0m Server: 0.0.0.0:8080
+[2m2026-05-10T03:14:19.362506Z[0m [32m INFO[0m [2miris_gateway[0m[2m:[0m Encryption: INACTIVE (zero-config)
+[2m2026-05-10T03:14:19.362511Z[0m [32m INFO[0m [2miris_gateway[0m[2m:[0m Base dir: "./data"
+[2m2026-05-10T03:14:19.362518Z[0m [32m INFO[0m [2miris_gateway[0m[2m:[0m File mappings: 0
+[2m2026-05-10T03:14:19.362522Z[0m [32m INFO[0m [2miris_gateway[0m[2m:[0m API routes: 0
+[2m2026-05-10T03:14:19.362828Z[0m [32m INFO[0m [2miris_gateway::server[0m[2m:[0m Scanned assets_dir: found 19 URL references in HTML
+[2m2026-05-10T03:14:19.363023Z[0m [32m INFO[0m [2miris_gateway::server[0m[2m:[0m Scanned base_dir: found 0 URL references in HTML
+[2m2026-05-10T03:14:19.363061Z[0m [32m INFO[0m [2miris_gateway::server[0m[2m:[0m Using existing key: 43df3253-e752-4a06-8b1c-581d07fc2cec
+[2m2026-05-10T03:14:19.363078Z[0m [32m INFO[0m [2miris_gateway::server[0m[2m:[0m Auto-mapped: media/images/team3.jpg -> oz5ShoqaVTfGHFJqfdzCRhASy5fVtcMpKzgjPew0ChU=
+[2m2026-05-10T03:14:19.363087Z[0m [32m INFO[0m [2miris_gateway::server[0m[2m:[0m Auto-mapped: media/audio/intro.wav -> nQyqvoKMO/hH81fzsadXYjfurVhvEVFne2tBvN8o/Pw=
+[2m2026-05-10T03:14:19.363105Z[0m [32m INFO[0m [2miris_gateway::server[0m[2m:[0m Auto-mapped: media/images/team2.jpg -> NuhQsWKnqecCpE6idrBwYUMh3xHXVqH4HTIKPzMzLgs=
+[2m2026-05-10T03:14:19.363116Z[0m [32m INFO[0m [2miris_gateway::server[0m[2m:[0m Auto-mapped: media/images/product4.jpg -> ngsvQ0YjF0pGTdRBmhVTReRx8bymAY7aifXhcJy7A1s=
+[2m2026-05-10T03:14:19.363126Z[0m [32m INFO[0m [2miris_gateway::server[0m[2m:[0m Auto-mapped: media/images/team4.jpg -> xizgdpBwdEA/dDCgPKt90bLD84Rar0LteC6UGv09zvI=
+[2m2026-05-10T03:14:19.363137Z[0m [32m INFO[0m [2miris_gateway::server[0m[2m:[0m Auto-mapped: media/images/hero.jpg -> S4nW5UXiEn9sDLj5Nf+obUYRpUL3NdpsAJZSdWtd3h4=
+[2m2026-05-10T03:14:19.363146Z[0m [32m INFO[0m [2miris_gateway::server[0m[2m:[0m Auto-mapped: media/video/promo.mp4 -> EBWIHLn6dCzkUKELRNUAHJt1T5MwLNjklffr+bmsQ2U=
+[2m2026-05-10T03:14:19.363156Z[0m [32m INFO[0m [2miris_gateway::server[0m[2m:[0m Auto-mapped: media/images/product2.jpg -> OVkbxBrUI+5AwRZtU5YFJfnVuAT86qnPBfBlixbuaSI=
+[2m2026-05-10T03:14:19.363165Z[0m [32m INFO[0m [2miris_gateway::server[0m[2m:[0m Auto-mapped: media/images/logo.png -> xW3Sso7BRG6KvUanmWAYgsJDJuylF2vVtuiliI1oy64=
+[2m2026-05-10T03:14:19.363175Z[0m [32m INFO[0m [2miris_gateway::server[0m[2m:[0m Auto-mapped: media/audio/ambient.wav -> PZcHfT/X/OY2l8XnkDZvW0IcKcQgXPfpxuQ8ZDU9Gg4=
+[2m2026-05-10T03:14:19.363185Z[0m [32m INFO[0m [2miris_gateway::server[0m[2m:[0m Auto-mapped: media/images/office.jpg -> ZKdyAUoZfy+eCSsxUHXvjbmUQQiT6vTFD5ioq9gtgyg=
+[2m2026-05-10T03:14:19.363194Z[0m [32m INFO[0m [2miris_gateway::server[0m[2m:[0m Auto-mapped: media/images/team5.jpg -> 9+in9wZIptT1KgmdvRxrQq3MuOdp509EmpSFn/5fKOA=
+[2m2026-05-10T03:14:19.363204Z[0m [32m INFO[0m [2miris_gateway::server[0m[2m:[0m Auto-mapped: media/audio/notification.wav -> 00ccT4U4IrBZjsGDyYoalTKryYRdNJYd0y6RsiTWFWs=
+[2m2026-05-10T03:14:19.363218Z[0m [32m INFO[0m [2miris_gateway::server[0m[2m:[0m Auto-mapped: media/images/team1.jpg -> EbG2aVOiy/d+SiTjY6S8YJcijeQY5zeXoGQ8u8TwZNk=
+[2m2026-05-10T03:14:19.363229Z[0m [32m INFO[0m [2miris_gateway::server[0m[2m:[0m Auto-mapped: media/images/product3.jpg -> 5VfkcLKQrukazNzUfpgWzg0vzA50eLMUDa3+S0hAnz8=
+[2m2026-05-10T03:14:19.363239Z[0m [32m INFO[0m [2miris_gateway::server[0m[2m:[0m Auto-mapped: media/images/product1.jpg -> tn7NzQ+9XIq7/5fh3NKrmxPkimEqGe+8DpmAPAGgkqE=
+[2m2026-05-10T03:14:19.363268Z[0m [32m INFO[0m [2miris_gateway::server[0m[2m:[0m Auto-configured: 16 file mappings from HTML scan
+[2m2026-05-10T03:14:19.363362Z[0m [32m INFO[0m [2miris_gateway::server[0m[2m:[0m Iris Gateway listening on 0.0.0.0:8080
+[2m2026-05-10T03:14:19.363378Z[0m [32m INFO[0m [2miris_gateway::server[0m[2m:[0m Encryption: ACTIVE
+[2m2026-05-10T03:14:19.363384Z[0m [32m INFO[0m [2miris_gateway::server[0m[2m:[0m File mappings: 16 (auto-discovered from HTML)

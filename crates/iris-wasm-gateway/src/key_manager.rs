@@ -1,14 +1,18 @@
 //! 密钥管理
 
 use aes_gcm::{
-    aead::{Aead, KeyInit},
+    aead::{Aead, KeyInit, OsRng},
     Aes256Gcm, Nonce,
 };
 use chrono::{DateTime, Utc, Duration};
+use rand::RngCore;
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 use uuid::Uuid;
 use crate::Result;
+
+/// Nonce size for AES-256-GCM (96 bits / 12 bytes)
+const NONCE_SIZE: usize = 12;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct KeyPair {
@@ -115,29 +119,44 @@ impl KeyPair {
     pub fn to_hex(&self) -> String {
         hex::encode(&self.key)
     }
-    
+
+    /// Encrypt with random nonce. Output: [12-byte nonce][ciphertext]
     pub fn encrypt(&self, plaintext: &[u8]) -> Result<Vec<u8>> {
         let key_array: [u8; 32] = self.key.clone().try_into()
             .map_err(|_| crate::Error::Key("Invalid key length".to_string()))?;
-        
+
         let cipher = Aes256Gcm::new_from_slice(&key_array)
             .map_err(|e| crate::Error::Key(format!("Failed to create cipher: {}", e)))?;
-        
-        let nonce = Nonce::from_slice(&[0u8; 12]);
-        
-        cipher.encrypt(nonce, plaintext)
-            .map_err(|e| crate::Error::Key(format!("Encryption failed: {}", e)))
+
+        let mut nonce_bytes = [0u8; NONCE_SIZE];
+        OsRng.fill_bytes(&mut nonce_bytes);
+        let nonce = Nonce::from_slice(&nonce_bytes);
+
+        let ciphertext = cipher.encrypt(nonce, plaintext)
+            .map_err(|e| crate::Error::Key(format!("Encryption failed: {}", e)))?;
+
+        let mut output = Vec::with_capacity(NONCE_SIZE + ciphertext.len());
+        output.extend_from_slice(&nonce_bytes);
+        output.extend_from_slice(&ciphertext);
+
+        Ok(output)
     }
-    
-    pub fn decrypt(&self, ciphertext: &[u8]) -> Result<Vec<u8>> {
+
+    /// Decrypt with embedded nonce. Input: [12-byte nonce][ciphertext]
+    pub fn decrypt(&self, data: &[u8]) -> Result<Vec<u8>> {
         let key_array: [u8; 32] = self.key.clone().try_into()
             .map_err(|_| crate::Error::Key("Invalid key length".to_string()))?;
-        
+
         let cipher = Aes256Gcm::new_from_slice(&key_array)
             .map_err(|e| crate::Error::Key(format!("Failed to create cipher: {}", e)))?;
-        
-        let nonce = Nonce::from_slice(&[0u8; 12]);
-        
+
+        if data.len() < NONCE_SIZE {
+            return Err(crate::Error::Key("Data too short to contain nonce".to_string()));
+        }
+
+        let (nonce_bytes, ciphertext) = data.split_at(NONCE_SIZE);
+        let nonce = Nonce::from_slice(nonce_bytes);
+
         cipher.decrypt(nonce, ciphertext)
             .map_err(|e| crate::Error::Key(format!("Decryption failed: {}", e)))
     }

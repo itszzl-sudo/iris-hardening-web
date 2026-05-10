@@ -16,11 +16,14 @@ wasm_gateway_url = "http://127.0.0.1:9090"
 check_interval_seconds = 3600
 update_before_expiry_hours = 2
 
-# 文件名映射: 加密名 -> 真实文件名
+# 内部 API 认证令牌 - 必须与 iris-wasm-gateway 配置一致
+internal_token = "change-me-in-production"
+
+# 文件名映射: 真实文件名 -> 加密名
 [file_mappings]
-"abc123" = "secret/document.pdf"
-"def456" = "private/data.json"
-"xyz789" = "config/settings.toml"
+"secret/document.pdf" = "abc123"
+"private/data.json" = "def456"
+"config/settings.toml" = "xyz789"
 
 # API 路由转发
 [[api_routes]]

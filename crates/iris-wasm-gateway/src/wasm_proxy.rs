@@ -3,8 +3,8 @@
 //! 编译后嵌入 iris-wasm-gateway
 
 use wasm_bindgen::prelude::*;
-use js_sys::{Object, Reflect};
-use web_sys::{Request, Response, ResponseInit, Headers};
+use js_sys::{Object, Reflect, Uint8Array};
+use web_sys::{Request, Response, ResponseInit, Headers, RequestInit};
 
 #[wasm_bindgen]
 extern "C" {
@@ -56,7 +56,10 @@ pub async fn proxy_request(request: Request) -> Result<Response, JsValue> {
     
     log(&format!("Proxying: {} -> {}", url, encrypted_url));
     
-    let mut opts = Request::new_with_str_and_init(&encrypted_url, &request)?;
+    let mut opts = RequestInit::new();
+    opts.method("GET");
+    
+    let request = Request::new_with_str_and_init(&encrypted_url, &opts)?;
     
     let headers = Headers::new()?;
     headers.set("X-Iris-Key-Id", &get_key_id())?;
@@ -79,16 +82,13 @@ pub async fn proxy_request(request: Request) -> Result<Response, JsValue> {
     
     let encrypted_data = js_sys::Uint8Array::new(&body).to_vec();
     
-    let decrypted_data = decrypt_data(&encrypted_data)?;
+    let mut decrypted_data = decrypt_data(&encrypted_data)?;
     
-    let decrypted_array = js_sys::Uint8Array::new_with_length(decrypted_data.len() as u32);
-    decrypted_array.copy_from(&decrypted_data);
-    
-    let init = ResponseInit::new();
+    let mut init = ResponseInit::new();
     init.status(200);
     init.headers(&headers);
     
-    Response::new_with_opt_u8_array_and_init(Some(&decrypted_array), &init)
+    Response::new_with_opt_u8_array_and_init(Some(&mut decrypted_data), &init)
 }
 
 #[wasm_bindgen]
@@ -120,20 +120,27 @@ fn sha256(input: &str) -> String {
     hex::encode(hash)
 }
 
-fn aes_decrypt(key: &[u8], ciphertext: &[u8]) -> Result<Vec<u8>, JsValue> {
+fn aes_decrypt(key: &[u8], data: &[u8]) -> Result<Vec<u8>, JsValue> {
     use aes_gcm::{
         aead::{Aead, KeyInit},
         Aes256Gcm, Nonce,
     };
-    
+
+    const NONCE_SIZE: usize = 12;
+
     let key_array: [u8; 32] = key.try_into()
         .map_err(|_| JsValue::from_str("Invalid key"))?;
-    
+
     let cipher = Aes256Gcm::new_from_slice(&key_array)
         .map_err(|e| JsValue::from_str(&format!("Cipher error: {}", e)))?;
-    
-    let nonce = Nonce::from_slice(&[0u8; 12]);
-    
+
+    if data.len() < NONCE_SIZE {
+        return Err(JsValue::from_str("Data too short to contain nonce"));
+    }
+
+    let (nonce_bytes, ciphertext) = data.split_at(NONCE_SIZE);
+    let nonce = Nonce::from_slice(nonce_bytes);
+
     cipher.decrypt(nonce, ciphertext)
         .map_err(|e| JsValue::from_str(&format!("Decryption error: {}", e)))
 }

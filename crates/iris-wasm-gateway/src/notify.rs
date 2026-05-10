@@ -9,6 +9,7 @@ pub struct Notifier {
     client: Client,
     encrypt_url: String,
     endpoint: String,
+    internal_token: String,
 }
 
 #[derive(Debug, Serialize)]
@@ -25,13 +26,13 @@ struct UpdateKeyResponse {
 }
 
 impl Notifier {
-    pub fn new(encrypt_url: String, endpoint: String) -> Result<Self> {
+    pub fn new(encrypt_url: String, endpoint: String, internal_token: String) -> Result<Self> {
         let client = Client::builder()
             .timeout(Duration::from_secs(10))
             .build()
             .map_err(|e| crate::Error::Http(format!("Failed to create client: {}", e)))?;
-        
-        Ok(Self { client, encrypt_url, endpoint })
+
+        Ok(Self { client, encrypt_url, endpoint, internal_token })
     }
     
     pub async fn notify_key_update(&self, key_pair: &KeyPair) -> Result<()> {
@@ -47,6 +48,7 @@ impl Notifier {
         
         let response = self.client
             .post(&url)
+            .header("X-Internal-Token", &self.internal_token)
             .json(&request)
             .send()
             .await

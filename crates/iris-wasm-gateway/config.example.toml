@@ -13,3 +13,5 @@ rotation_margin_hours = 2
 [encrypt_service]
 url = "http://127.0.0.1:8080"
 update_key_endpoint = "/internal/update-key"
+# 内部 API 认证令牌 - 必须与 iris-secure-gateway 配置一致
+internal_token = "change-me-in-production"

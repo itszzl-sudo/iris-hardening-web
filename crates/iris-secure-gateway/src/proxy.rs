@@ -2,7 +2,7 @@
 
 use reqwest::Client;
 use std::time::Duration;
-use crate::{ApiRoute, Result};
+use crate::Result;
 
 pub struct ApiProxy {
     client: Client,
@@ -14,20 +14,20 @@ impl ApiProxy {
             .timeout(Duration::from_secs(30))
             .build()
             .map_err(|e| crate::Error::Http(format!("Failed to create client: {}", e)))?;
-        
+
         Ok(Self { client })
     }
-    
+
     pub async fn forward(
         &self,
-        route: &ApiRoute,
+        target: &str,
         path: &str,
         method: &str,
         body: Option<&[u8]>,
         headers: Vec<(String, String)>,
     ) -> Result<ProxyResponse> {
-        let url = format!("{}{}", route.target, path);
-        
+        let url = format!("{}{}", target, path);
+
         let mut request = match method.to_uppercase().as_str() {
             "GET" => self.client.get(&url),
             "POST" => self.client.post(&url),
@@ -36,24 +36,24 @@ impl ApiProxy {
             "PATCH" => self.client.patch(&url),
             _ => self.client.get(&url),
         };
-        
+
         for (key, value) in headers {
             request = request.header(&key, &value);
         }
-        
+
         if let Some(b) = body {
             request = request.body(b.to_vec());
         }
-        
+
         let response = request.send()
             .await
             .map_err(|e| crate::Error::Http(format!("Request failed: {}", e)))?;
-        
+
         let status = response.status().as_u16();
         let body = response.bytes()
             .await
             .map_err(|e| crate::Error::Http(format!("Failed to read body: {}", e)))?;
-        
+
         Ok(ProxyResponse {
             status,
             body: body.to_vec(),
