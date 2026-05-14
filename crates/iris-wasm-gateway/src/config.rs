@@ -34,6 +34,13 @@ pub struct KeyConfig {
 pub struct EncryptServiceConfig {
     pub url: String,
     pub update_key_endpoint: String,
+    /// Shared secret token for authenticating with iris-secure-gateway internal API.
+    #[serde(default = "default_internal_token")]
+    pub internal_token: String,
+}
+
+fn default_internal_token() -> String {
+    "change-me-in-production".to_string()
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -117,6 +124,7 @@ impl Default for Config {
             encrypt_service: EncryptServiceConfig {
                 url: "http://127.0.0.1:8080".to_string(),
                 update_key_endpoint: "/internal/update-key".to_string(),
+                internal_token: "change-me-in-production".to_string(),
             },
             scheduler: SchedulerConfig::default(),
             cloudflare_config_path: None,

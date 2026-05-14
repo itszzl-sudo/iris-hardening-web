@@ -1,0 +1,56 @@
+[2m2026-05-09T13:57:16.073500Z[0m [32m INFO[0m [2miris_gateway[0m[2m:[0m Loaded config from: /tmp/iris-demo/config.toml
+[2m2026-05-09T13:57:16.073531Z[0m [32m INFO[0m [2miris_gateway[0m[2m:[0m Starting Iris Gateway v0.1.1
+[2m2026-05-09T13:57:16.073537Z[0m [32m INFO[0m [2miris_gateway[0m[2m:[0m Server: 0.0.0.0:8080
+[2m2026-05-09T13:57:16.073542Z[0m [32m INFO[0m [2miris_gateway[0m[2m:[0m Encryption: ACTIVE
+[2m2026-05-09T13:57:16.073546Z[0m [32m INFO[0m [2miris_gateway[0m[2m:[0m Base dir: "/tmp/iris-demo/data"
+[2m2026-05-09T13:57:16.073552Z[0m [32m INFO[0m [2miris_gateway[0m[2m:[0m File mappings: 20
+[2m2026-05-09T13:57:16.073557Z[0m [32m INFO[0m [2miris_gateway[0m[2m:[0m API routes: 1
+[2m2026-05-09T13:57:16.073596Z[0m [32m INFO[0m [2miris_gateway::server[0m[2m:[0m Using existing key: e3c75615-7eb7-4cb5-af4b-fadf8d88521a
+[2m2026-05-09T13:57:16.073735Z[0m [32m INFO[0m [2miris_gateway::server[0m[2m:[0m Iris Gateway listening on 0.0.0.0:8080
+[2m2026-05-09T13:57:16.073745Z[0m [32m INFO[0m [2miris_gateway::server[0m[2m:[0m Encryption: ACTIVE
+[2m2026-05-09T13:57:16.073751Z[0m [32m INFO[0m [2miris_gateway::server[0m[2m:[0m File mappings: 20 (auto-discovered from HTML)
+[2m2026-05-09T13:58:09.415496Z[0m [32m INFO[0m [2miris_gateway::server[0m[2m:[0m File request: lg01 -> "/tmp/iris-demo/data/media/images/logo.png"
+[2m2026-05-09T13:58:09.415916Z[0m [32m INFO[0m [2miris_gateway::server[0m[2m:[0m File request: h01 -> "/tmp/iris-demo/data/media/images/hero.png"
+[2m2026-05-09T13:58:09.416284Z[0m [32m INFO[0m [2miris_gateway::server[0m[2m:[0m File request: of01 -> "/tmp/iris-demo/data/media/images/office.png"
+[2m2026-05-09T13:58:09.416503Z[0m [32m INFO[0m [2miris_gateway::server[0m[2m:[0m File request: p01 -> "/tmp/iris-demo/data/media/images/product1.png"
+[2m2026-05-09T13:58:09.416718Z[0m [32m INFO[0m [2miris_gateway::server[0m[2m:[0m File request: p02 -> "/tmp/iris-demo/data/media/images/product2.png"
+[2m2026-05-09T13:58:09.417297Z[0m [32m INFO[0m [2miris_gateway::server[0m[2m:[0m File request: p03 -> "/tmp/iris-demo/data/media/images/product3.png"
+[2m2026-05-09T13:58:09.417629Z[0m [32m INFO[0m [2miris_gateway::server[0m[2m:[0m File request: p04 -> "/tmp/iris-demo/data/media/images/product4.png"
+[2m2026-05-09T13:58:09.417979Z[0m [32m INFO[0m [2miris_gateway::server[0m[2m:[0m File request: t01 -> "/tmp/iris-demo/data/media/images/team1.png"
+[2m2026-05-09T13:58:09.418350Z[0m [32m INFO[0m [2miris_gateway::server[0m[2m:[0m File request: t02 -> "/tmp/iris-demo/data/media/images/team2.png"
+[2m2026-05-09T13:58:09.418704Z[0m [32m INFO[0m [2miris_gateway::server[0m[2m:[0m File request: t03 -> "/tmp/iris-demo/data/media/images/team3.png"
+[2m2026-05-09T13:58:09.419061Z[0m [32m INFO[0m [2miris_gateway::server[0m[2m:[0m File request: t04 -> "/tmp/iris-demo/data/media/images/team4.png"
+[2m2026-05-09T13:58:09.419435Z[0m [32m INFO[0m [2miris_gateway::server[0m[2m:[0m File request: t05 -> "/tmp/iris-demo/data/media/images/team5.png"
+[2m2026-05-09T13:58:09.464667Z[0m [32m INFO[0m [2miris_gateway::server[0m[2m:[0m File request: lg01 -> "/tmp/iris-demo/data/media/images/logo.png"
+[2m2026-05-09T13:58:09.465660Z[0m [32m INFO[0m [2miris_gateway::server[0m[2m:[0m File request: h01 -> "/tmp/iris-demo/data/media/images/hero.png"
+[2m2026-05-09T13:58:09.467724Z[0m [32m INFO[0m [2miris_gateway::server[0m[2m:[0m File request: of01 -> "/tmp/iris-demo/data/media/images/office.png"
+[2m2026-05-09T13:58:09.468968Z[0m [32m INFO[0m [2miris_gateway::server[0m[2m:[0m File request: p01 -> "/tmp/iris-demo/data/media/images/product1.png"
+[2m2026-05-09T13:58:09.471145Z[0m [32m INFO[0m [2miris_gateway::server[0m[2m:[0m File request: p02 -> "/tmp/iris-demo/data/media/images/product2.png"
+[2m2026-05-09T13:58:09.471892Z[0m [32m INFO[0m [2miris_gateway::server[0m[2m:[0m File request: p03 -> "/tmp/iris-demo/data/media/images/product3.png"
+[2m2026-05-09T13:58:09.472843Z[0m [32m INFO[0m [2miris_gateway::server[0m[2m:[0m File request: p04 -> "/tmp/iris-demo/data/media/images/product4.png"
+[2m2026-05-09T13:58:09.473346Z[0m [32m INFO[0m [2miris_gateway::server[0m[2m:[0m File request: t01 -> "/tmp/iris-demo/data/media/images/team1.png"
+[2m2026-05-09T13:58:09.474437Z[0m [32m INFO[0m [2miris_gateway::server[0m[2m:[0m File request: t02 -> "/tmp/iris-demo/data/media/images/team2.png"
+[2m2026-05-09T13:58:09.474838Z[0m [32m INFO[0m [2miris_gateway::server[0m[2m:[0m File request: t03 -> "/tmp/iris-demo/data/media/images/team3.png"
+[2m2026-05-09T13:58:09.475511Z[0m [32m INFO[0m [2miris_gateway::server[0m[2m:[0m File request: t04 -> "/tmp/iris-demo/data/media/images/team4.png"
+[2m2026-05-09T13:58:09.476047Z[0m [32m INFO[0m [2miris_gateway::server[0m[2m:[0m File request: t05 -> "/tmp/iris-demo/data/media/images/team5.png"
+[2m2026-05-09T13:58:09.488970Z[0m [33m WARN[0m [2miris_gateway::server[0m[2m:[0m Internal API authentication failed
+[2m2026-05-09T13:58:09.540054Z[0m [32m INFO[0m [2miris_gateway::server[0m[2m:[0m File request: v01 -> "/tmp/iris-demo/data/media/video/promo.mp4"
+[2m2026-05-09T13:58:09.540340Z[0m [32m INFO[0m [2miris_gateway::server[0m[2m:[0m File request: a01 -> "/tmp/iris-demo/data/media/audio/intro.wav"
+[2m2026-05-09T13:58:09.540683Z[0m [32m INFO[0m [2miris_gateway::server[0m[2m:[0m File request: a02 -> "/tmp/iris-demo/data/media/audio/ambient.wav"
+[2m2026-05-09T13:58:09.541312Z[0m [32m INFO[0m [2miris_gateway::server[0m[2m:[0m File request: a03 -> "/tmp/iris-demo/data/media/audio/notification.wav"
+[2m2026-05-09T13:59:55.040992Z[0m [32m INFO[0m [2miris_gateway::server[0m[2m:[0m File request: lg01 -> "/tmp/iris-demo/data/media/images/logo.png"
+[2m2026-05-09T13:59:55.041459Z[0m [32m INFO[0m [2miris_gateway::server[0m[2m:[0m File request: h01 -> "/tmp/iris-demo/data/media/images/hero.png"
+[2m2026-05-09T13:59:55.041562Z[0m [32m INFO[0m [2miris_gateway::server[0m[2m:[0m File request: of01 -> "/tmp/iris-demo/data/media/images/office.png"
+[2m2026-05-09T13:59:55.041815Z[0m [32m INFO[0m [2miris_gateway::server[0m[2m:[0m File request: p01 -> "/tmp/iris-demo/data/media/images/product1.png"
+[2m2026-05-09T13:59:55.043006Z[0m [32m INFO[0m [2miris_gateway::server[0m[2m:[0m File request: p02 -> "/tmp/iris-demo/data/media/images/product2.png"
+[2m2026-05-09T13:59:55.047927Z[0m [32m INFO[0m [2miris_gateway::server[0m[2m:[0m File request: p03 -> "/tmp/iris-demo/data/media/images/product3.png"
+[2m2026-05-09T13:59:55.048269Z[0m [32m INFO[0m [2miris_gateway::server[0m[2m:[0m File request: p04 -> "/tmp/iris-demo/data/media/images/product4.png"
+[2m2026-05-09T13:59:55.049904Z[0m [32m INFO[0m [2miris_gateway::server[0m[2m:[0m File request: t01 -> "/tmp/iris-demo/data/media/images/team1.png"
+[2m2026-05-09T13:59:55.050047Z[0m [32m INFO[0m [2miris_gateway::server[0m[2m:[0m File request: t02 -> "/tmp/iris-demo/data/media/images/team2.png"
+[2m2026-05-09T13:59:55.050401Z[0m [32m INFO[0m [2miris_gateway::server[0m[2m:[0m File request: t03 -> "/tmp/iris-demo/data/media/images/team3.png"
+[2m2026-05-09T13:59:55.052186Z[0m [32m INFO[0m [2miris_gateway::server[0m[2m:[0m File request: t04 -> "/tmp/iris-demo/data/media/images/team4.png"
+[2m2026-05-09T13:59:55.052878Z[0m [32m INFO[0m [2miris_gateway::server[0m[2m:[0m File request: t05 -> "/tmp/iris-demo/data/media/images/team5.png"
+[2m2026-05-09T13:59:55.114115Z[0m [32m INFO[0m [2miris_gateway::server[0m[2m:[0m File request: v01 -> "/tmp/iris-demo/data/media/video/promo.mp4"
+[2m2026-05-09T13:59:55.120583Z[0m [32m INFO[0m [2miris_gateway::server[0m[2m:[0m File request: a01 -> "/tmp/iris-demo/data/media/audio/intro.wav"
+[2m2026-05-09T13:59:55.123932Z[0m [32m INFO[0m [2miris_gateway::server[0m[2m:[0m File request: a02 -> "/tmp/iris-demo/data/media/audio/ambient.wav"
+[2m2026-05-09T13:59:55.126913Z[0m [32m INFO[0m [2miris_gateway::server[0m[2m:[0m File request: a03 -> "/tmp/iris-demo/data/media/audio/notification.wav"

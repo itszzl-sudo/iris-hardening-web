@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Iris Hardening Web - WebGPU Demo</title>
+    <link href="/css/style.css" rel="stylesheet">
+</head>
+<body>
+    <header>
+        <h1>Iris Hardening Web</h1>
+        <p>WebGPU Anti-Screenshot Image Protection</p>
+    </header>
+
+    <nav>
+        <a href="#features">Features</a>
+        <a href="#images">Secure Images</a>
+        <a href="#status">Status</a>
+        <a href="#test">Test</a>
+    </nav>
+
+    <main>
+        <section id="features">
+            <h2>Active Defenses</h2>
+            <div class="feature-grid">
+                <div class="feature-card webgpu">
+                    <div class="feature-icon">&#9889;</div>
+                    <h3>WebGPU Rendering</h3>
+                    <p>Images rendered via GPU pipeline — no getImageData(), pixels unreachable from JS</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">&#128274;</div>
+                    <h3>AES-256-GCM Encryption</h3>
+                    <p>Files encrypted at rest, decrypted on-the-fly via Service Worker</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">&#128065;</div>
+                    <h3>Progressive Tiles</h3>
+                    <p>Image rendered tile-by-tile over multiple frames — mid-render screenshots are incomplete</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">&#128270;</div>
+                    <h3>Forensic Watermark</h3>
+                    <p>Shader-injected noise: tile index + session hash in B channel LSB — every screenshot is unique</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">&#128064;</div>
+                    <h3>Capture Detection</h3>
+                    <p>Tab switch blanks canvas, getDisplayMedia hook, PrintScreen/Ctrl+P detection</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">&#128196;</div>
+                    <h3>Print Protection</h3>
+                    <p>Canvases hidden from print CSS, Ctrl+P blanks before print</p>
+                </div>
+            </div>
+        </section>
+
+        <section id="images">
+            <h2>Secure Image Gallery</h2>
+            <p>These images are served encrypted, decrypted by Service Worker, then rendered via WebGPU with anti-capture protection.</p>
+            <p class="hint">Try: switch tabs (canvases blank), press PrintScreen, or right-click a canvas.</p>
+            <div class="gallery">
+                <div class="gallery-item">
+                    <img data-iris-secure src="/secret/photo1.dat" alt="Encrypted Image 1">
+                    <p>Photo 1 — Encrypted + WebGPU</p>
+                </div>
+                <div class="gallery-item">
+                    <img data-iris-secure src="/secret/photo2.dat" alt="Encrypted Image 2">
+                    <p>Photo 2 — Encrypted + WebGPU</p>
+                </div>
+                <div class="gallery-item">
+                    <img data-iris-secure src="/secret/photo3.dat" alt="Encrypted Image 3">
+                    <p>Photo 3 — Encrypted + WebGPU</p>
+                </div>
+            </div>
+        </section>
+
+        <section id="status">
+            <h2>Gateway Status</h2>
+            <div id="status-info">Loading...</div>
+            <div id="sw-status">Checking Service Worker...</div>
+            <div id="renderer-status">Checking renderer...</div>
+            <div id="config-info">Loading config...</div>
+        </section>
+
+        <section id="test">
+            <h2>Try It</h2>
+            <div class="test-actions">
+                <button onclick="testDecrypt()">Test Decrypt API</button>
+                <button onclick="testVisibility()">Test Visibility (switch tab)</button>
+                <button onclick="testPrint()">Test Print (Ctrl+P)</button>
+                <button onclick="checkRenderer()">Check Renderer</button>
+                <button onclick="refreshStatus()">Refresh Status</button>
+            </div>
+            <div id="test-output"></div>
+        </section>
+    </main>
+
+    <footer>
+        <p>Iris Hardening Web v0.1.1 | WebGPU Anti-Screenshot | <a href="/status">API Status</a></p>
+    </footer>
+
+    <script src="/js/app.js"></script>
+</body>
+</html>

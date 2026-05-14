@@ -3,731 +3,736 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Iris Engine WASM - Fragmented Rendering</title>
+    <title>Iris Engine WASM - WebGPU Fragmented Rendering</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            color: white;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            min-height: 100vh; display: flex; flex-direction: column;
+            align-items: center; justify-content: center; color: white;
         }
-        #app {
-            text-align: center;
-            padding: 2rem;
-        }
-        h1 {
-            font-size: 3rem;
-            margin-bottom: 1rem;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
-        }
+        #app { text-align: center; padding: 2rem; }
+        h1 { font-size: 2.5rem; margin-bottom: 1rem; text-shadow: 2px 2px 4px rgba(0,0,0,0.5); }
         #status {
-            font-size: 1.2rem;
-            margin: 1rem 0;
-            padding: 0.5rem 1rem;
-            background: rgba(255,255,255,0.2);
-            border-radius: 8px;
+            font-size: 1.1rem; margin: 1rem 0; padding: 0.5rem 1rem;
+            background: rgba(255,255,255,0.15); border-radius: 8px;
         }
+        .canvas-container { position: relative; display: inline-block; }
         #canvas {
-            border: 2px solid rgba(255,255,255,0.5);
-            border-radius: 12px;
-            background: rgba(0,0,0,0.1);
-            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+            border: 2px solid rgba(255,255,255,0.3); border-radius: 12px;
+            background: #000; box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+            display: block;
         }
-        .loading {
-            animation: pulse 1.5s ease-in-out infinite;
+        .loading { animation: pulse 1.5s ease-in-out infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+        .controls { margin: 1rem 0; display: flex; gap: 0.5rem; flex-wrap: wrap; justify-content: center; }
+        .controls button {
+            padding: 0.5rem 1rem; border: 1px solid rgba(255,255,255,0.3);
+            background: rgba(255,255,255,0.1); color: white; border-radius: 6px;
+            cursor: pointer; font-size: 0.9rem; transition: background 0.2s;
         }
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
+        .controls button:hover { background: rgba(255,255,255,0.25); }
+        .controls button:disabled { opacity: 0.5; cursor: not-allowed; }
+        .controls input[type="file"] { display: none; }
+        .info { margin-top: 1.5rem; font-size: 0.85rem; opacity: 0.7; }
+        #watermark-result {
+            margin-top: 0.5rem; font-size: 0.85rem;
+            padding: 0.5rem; border-radius: 6px; min-height: 1.5em;
         }
-        .info {
-            margin-top: 2rem;
-            font-size: 0.9rem;
-            opacity: 0.8;
-        }
-        
+
         /* WebGPU Monitor Panel */
         #webgpu-monitor-panel {
-            position: fixed;
-            right: 20px;
-            top: 20px;
-            background: rgba(30, 30, 30, 0.95);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            border-radius: 8px;
-            padding: 12px;
-            min-width: 200px;
-            max-width: 280px;
-            z-index: 9999;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-            font-size: 12px;
-            color: #fff;
-            cursor: move;
-            user-select: none;
-            transition: all 0.3s ease;
+            position: fixed; right: 20px; top: 20px;
+            background: rgba(30, 30, 30, 0.95); border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 8px; padding: 12px; min-width: 220px; max-width: 300px;
+            z-index: 9999; box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            font-size: 12px; color: #fff; cursor: move; user-select: none;
         }
-        
-        #webgpu-monitor-panel.hidden-bar {
-            min-width: 8px;
-            max-width: 8px;
-            width: 8px;
-            height: 50px;
-            padding: 0;
-            border-radius: 4px;
-            cursor: pointer;
-        }
-        
-        #webgpu-monitor-panel.flash-red {
-            animation: flash-red 0.3s ease-in-out 3;
-        }
-        
-        @keyframes flash-red {
-            0%, 100% { background: rgba(30, 30, 30, 0.95); }
-            50% { background: rgba(255, 50, 50, 0.95); }
-        }
-        
         .panel-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 8px;
-            padding-bottom: 8px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,0.1);
         }
-        
-        .panel-title {
-            font-weight: bold;
-            font-size: 13px;
-        }
-        
-        .panel-controls {
-            display: flex;
-            gap: 4px;
-        }
-        
-        .panel-btn {
-            background: rgba(255, 255, 255, 0.1);
-            border: none;
-            color: #fff;
-            width: 20px;
-            height: 20px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: background 0.2s;
-        }
-        
-        .panel-btn:hover {
-            background: rgba(255, 255, 255, 0.2);
-        }
-        
-        .panel-content {
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-        }
-        
-        .monitor-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        
-        .monitor-label {
-            color: rgba(255, 255, 255, 0.6);
-        }
-        
-        .monitor-value {
-            font-weight: bold;
-        }
-        
-        .monitor-value.ok {
-            color: #4caf50;
-        }
-        
-        .monitor-value.warning {
-            color: #ff9800;
-        }
-        
-        .monitor-value.error {
-            color: #f44336;
-        }
-        
-        .progress-bar {
-            width: 100%;
-            height: 4px;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 2px;
-            overflow: hidden;
-            margin-top: 6px;
-        }
-        
-        .progress-fill {
-            height: 100%;
-            background: #4caf50;
-            transition: width 0.3s ease;
-        }
-        
-        .progress-fill.warning {
-            background: #ff9800;
-        }
-        
-        .progress-fill.error {
-            background: #f44336;
-        }
+        .panel-title { font-weight: bold; font-size: 13px; }
+        .panel-content { display: flex; flex-direction: column; gap: 6px; }
+        .monitor-row { display: flex; justify-content: space-between; align-items: center; }
+        .monitor-label { color: rgba(255,255,255,0.6); }
+        .monitor-value { font-weight: bold; }
+        .monitor-value.ok { color: #4caf50; }
+        .monitor-value.warning { color: #ff9800; }
+        .progress-bar { width: 100%; height: 4px; background: rgba(255,255,255,0.1); border-radius: 2px; overflow: hidden; margin-top: 6px; }
+        .progress-fill { height: 100%; background: #4caf50; transition: width 0.3s ease; }
+        .progress-fill.warning { background: #ff9800; }
     </style>
 </head>
 <body>
     <div id="app">
         <h1>Iris Engine WASM</h1>
         <div id="status" class="loading">Loading WASM module...</div>
-        <canvas id="canvas" width="800" height="600"></canvas>
+        <div class="controls">
+            <button id="btn-load-image">Load Image</button>
+            <input type="file" id="file-input" accept="image/*">
+            <button id="btn-render" disabled>Render (Fragmented)</button>
+            <button id="btn-check-watermark" disabled>Check Watermark</button>
+            <button id="btn-reset">Reset</button>
+        </div>
+        <div id="watermark-result"></div>
+        <div class="canvas-container">
+            <canvas id="canvas" width="800" height="600"></canvas>
+        </div>
         <div class="info">
             <p>Iris Engine Version: <span id="version">-</span></p>
-            <p>Powered by WebGPU/WebGL with Fragmented Rendering</p>
+            <p>Renderer: <span id="renderer-info">-</span></p>
         </div>
     </div>
 
     <script type="module">
         const statusEl = document.getElementById('status');
         const versionEl = document.getElementById('version');
+        const rendererInfoEl = document.getElementById('renderer-info');
         const canvas = document.getElementById('canvas');
-        const ctx = canvas.getContext('2d');
+        const watermarkResultEl = document.getElementById('watermark-result');
 
-        // Fragmented Renderer with WebGPU Hook
-        class FragmentedWebGPURenderer {
+        // =====================================================
+        // WebGPU Fragmented Image Renderer
+        // =====================================================
+        class WebGPUFragmentedRenderer {
             constructor(canvas, engine) {
                 this.canvas = canvas;
-                this.ctx = canvas.getContext('2d');
                 this.engine = engine;
-                this.device = null;
-                this.context = null;
-                this.originalWebGPU = null;
+                this.ctx = null;          // Canvas 2D fallback
+                this.device = null;       // WebGPU device
+                this.gpuContext = null;   // WebGPU canvas context
+                this.useWebGPU = false;
+                this.sourceImage = null;  // Image to render
+                this.sourceImageData = null; // ImageData for watermark encoding
+
                 this.tiles = [];
                 this.currentTileIndex = 0;
-                this.isRendering = false;
                 this.renderComplete = false;
                 this.screenshotDetected = false;
-                
+
                 this.canvasWidth = canvas.width;
                 this.canvasHeight = canvas.height;
                 this.tilesX = 4;
                 this.tilesY = 3;
-                
+
                 this.watermarkText = 'hardening.irisverse.org';
                 this.watermarkNormalAlpha = 0.008;
                 this.watermarkScreenshotAlpha = 0.15;
-                
-                this.hookWebGPU();
+
+                // Watermark encoder (from WASM)
+                this.watermarkEncoder = null;
+
                 this.detectScreenshot();
             }
-            
+
+            async init() {
+                // Try WebGPU first
+                if (navigator.gpu) {
+                    try {
+                        const adapter = await navigator.gpu.requestAdapter();
+                        if (adapter) {
+                            this.device = await adapter.requestDevice();
+                            this.gpuContext = this.canvas.getContext('webgpu');
+                            if (this.gpuContext) {
+                                const format = navigator.gpu.getPreferredCanvasFormat();
+                                this.gpuContext.configure({
+                                    device: this.device,
+                                    format: format,
+                                    alphaMode: 'premultiplied',
+                                });
+                                this.canvasFormat = format;
+                                this.useWebGPU = true;
+                                rendererInfoEl.textContent = 'WebGPU';
+                                console.log('WebGPU initialized for fragmented rendering');
+                            }
+                        }
+                    } catch (e) {
+                        console.warn('WebGPU not available, falling back to Canvas 2D:', e);
+                    }
+                }
+
+                if (!this.useWebGPU) {
+                    this.ctx = this.canvas.getContext('2d');
+                    rendererInfoEl.textContent = 'Canvas 2D';
+                }
+            }
+
             detectScreenshot() {
                 document.addEventListener('keydown', (e) => {
-                    if (e.key === 'PrintScreen' || 
+                    if (e.key === 'PrintScreen' ||
                         (e.ctrlKey && e.key === 'p') ||
-                        (e.metaKey && e.shiftKey && e.key === '4') ||
-                        (e.metaKey && e.shiftKey && e.key === '5')) {
+                        (e.metaKey && e.shiftKey && (e.key === '4' || e.key === '5'))) {
                         this.screenshotDetected = true;
-                        console.log('Screenshot detected');
-                        this.renderWatermark();
+                        console.log('Screenshot detected - watermark activated');
+                        this.renderVisibleWatermark();
                     }
                 });
-                
+
                 document.addEventListener('visibilitychange', () => {
                     if (document.hidden) {
-                        setTimeout(() => {
-                            this.screenshotDetected = true;
-                        }, 100);
+                        setTimeout(() => { this.screenshotDetected = true; }, 100);
                     }
                 });
-                
-                let lastTime = Date.now();
-                const checkInterval = setInterval(() => {
-                    const now = Date.now();
-                    if (now - lastTime > 500 && !document.hidden) {
-                        this.screenshotDetected = true;
-                    }
-                    lastTime = now;
-                }, 100);
             }
-            
-            hookWebGPU() {
-                if (!navigator.gpu) {
-                    console.warn('WebGPU not available, using Canvas 2D');
-                    return;
-                }
-                
-                this.originalWebGPU = {
-                    requestAdapter: navigator.gpu.requestAdapter.bind(navigator.gpu),
-                };
-                
-                const self = this;
-                
-                navigator.gpu.requestAdapter = async function(options) {
-                    const adapter = await self.originalWebGPU.requestAdapter(options);
-                    
-                    if (adapter) {
-                        const originalRequestDevice = adapter.requestDevice.bind(adapter);
-                        
-                        adapter.requestDevice = async function(descriptor) {
-                            const device = await originalRequestDevice(descriptor);
-                            self.device = device;
-                            self.interceptDeviceCommands(device);
-                            return device;
-                        };
-                    }
-                    
-                    return adapter;
-                };
-                
-                console.log('WebGPU hooked for fragmented rendering');
-            }
-            
-            interceptDeviceCommands(device) {
-                const originalCreateCommandEncoder = device.createCommandEncoder.bind(device);
-                const self = this;
-                
-                device.createCommandEncoder = function(descriptor) {
-                    const encoder = originalCreateCommandEncoder(descriptor);
-                    self.interceptEncoder(encoder);
-                    return encoder;
-                };
-            }
-            
-            interceptEncoder(encoder) {
-                if (encoder.beginRenderPass) {
-                    const originalBeginRenderPass = encoder.beginRenderPass.bind(encoder);
-                    const self = this;
-                    
-                    encoder.beginRenderPass = function(descriptor) {
-                        const pass = originalBeginRenderPass(descriptor);
-                        self.currentPass = pass;
-                        return pass;
+
+            loadImage(imageSrc) {
+                return new Promise((resolve, reject) => {
+                    const img = new Image();
+                    img.crossOrigin = 'anonymous';
+                    img.onload = () => {
+                        this.sourceImage = img;
+                        resolve(img);
                     };
-                }
+                    img.onerror = reject;
+                    img.src = imageSrc;
+                });
             }
-            
+
             setupTiles() {
                 this.engine.setup_fragmented_rendering(
-                    this.canvasWidth, 
-                    this.canvasHeight, 
-                    this.tilesX, 
-                    this.tilesY
+                    this.canvasWidth, this.canvasHeight,
+                    this.tilesX, this.tilesY
                 );
                 this.engine.shuffle_tiles();
+
                 this.tiles = [];
-                
                 let tile;
                 while ((tile = this.engine.get_next_tile()) !== null) {
                     this.tiles.push(tile);
                 }
-                
                 this.currentTileIndex = 0;
                 this.renderComplete = false;
-                
+
                 console.log(`Setup ${this.tiles.length} tiles for fragmented rendering`);
             }
-            
-            async renderNextTile() {
-                if (this.currentTileIndex >= this.tiles.length) {
-                    this.renderComplete = true;
-                    return null;
+
+            async renderAllTiles() {
+                if (!this.sourceImage) {
+                    console.error('No image loaded');
+                    return;
                 }
-                
-                const tile = this.tiles[this.currentTileIndex];
-                this.currentTileIndex++;
-                
-                await this.renderTile(tile);
-                this.engine.mark_tile_rendered(tile.id);
-                
-                return tile;
+
+                if (this.useWebGPU) {
+                    await this.renderWithWebGPU();
+                } else {
+                    await this.renderWithCanvas2D();
+                }
             }
-            
-            renderWatermark(alpha = null) {
-                const useAlpha = alpha !== null ? alpha : 
-                    (this.screenshotDetected ? this.watermarkScreenshotAlpha : this.watermarkNormalAlpha);
-                
-                this.ctx.save();
-                
-                const centerX = this.canvasWidth / 2;
-                const centerY = this.canvasHeight / 2;
-                
-                const fontSize = 56;
-                const cornerFontSize = 36;
-                
-                this.ctx.globalAlpha = useAlpha;
-                this.ctx.font = `bold ${fontSize}px "Segoe UI", Arial, sans-serif`;
-                this.ctx.fillStyle = '#ffffff';
-                this.ctx.textAlign = 'center';
-                this.ctx.textBaseline = 'middle';
-                
-                const textWidth = this.ctx.measureText(this.watermarkText).width;
-                const textHeight = fontSize;
-                
-                const clipX = Math.max(0, centerX - textWidth / 2);
-                const clipY = Math.max(0, centerY - textHeight / 2);
-                const clipWidth = Math.min(textWidth, this.canvasWidth - clipX);
-                const clipHeight = Math.min(textHeight, this.canvasHeight - clipY);
-                
-                if (clipWidth > 0 && clipHeight > 0) {
-                    this.ctx.beginPath();
-                    this.ctx.rect(clipX, clipY, clipWidth, clipHeight);
-                    this.ctx.clip();
-                    this.ctx.fillText(this.watermarkText, centerX, centerY);
+
+            // === WebGPU Rendering Path ===
+
+            async renderWithWebGPU() {
+                const device = this.device;
+                const gpuContext = this.gpuContext;
+
+                // 1. Create texture from source image
+                const img = this.sourceImage;
+                const imageCanvas = document.createElement('canvas');
+                imageCanvas.width = img.naturalWidth || img.width;
+                imageCanvas.height = img.naturalHeight || img.height;
+                const imgCtx = imageCanvas.getContext('2d');
+                imgCtx.drawImage(img, 0, 0);
+                this.sourceImageData = imgCtx.getImageData(0, 0, imageCanvas.width, imageCanvas.height);
+
+                // 2. Encode watermark into pixel data (LSB steganography)
+                if (this.watermarkEncoder) {
+                    const encoded = this.watermarkEncoder.encode(
+                        this.sourceImageData.data,
+                        this.watermarkText
+                    );
+                    this.sourceImageData.data.set(encoded);
                 }
-                
-                this.ctx.restore();
-                this.ctx.save();
-                
-                this.ctx.globalAlpha = useAlpha * 0.6;
-                this.ctx.font = `bold ${cornerFontSize}px "Segoe UI", Arial, sans-serif`;
-                
-                const cornerTextWidth = this.ctx.measureText(this.watermarkText).width;
-                const cornerTextHeight = cornerFontSize;
-                
-                const positions = [
-                    { x: cornerTextWidth / 2 + 10, y: cornerTextHeight / 2 + 10 },
-                    { x: this.canvasWidth - cornerTextWidth / 2 - 10, y: cornerTextHeight / 2 + 10 },
-                    { x: cornerTextWidth / 2 + 10, y: this.canvasHeight - cornerTextHeight / 2 - 10 },
-                    { x: this.canvasWidth - cornerTextWidth / 2 - 10, y: this.canvasHeight - cornerTextHeight / 2 - 10 },
-                ];
-                
-                positions.forEach(pos => {
-                    this.ctx.restore();
-                    this.ctx.save();
-                    
-                    const cClipX = Math.max(0, pos.x - cornerTextWidth / 2);
-                    const cClipY = Math.max(0, pos.y - cornerTextHeight / 2);
-                    const cClipWidth = Math.min(cornerTextWidth, this.canvasWidth - cClipX);
-                    const cClipHeight = Math.min(cornerTextHeight, this.canvasHeight - cClipY);
-                    
-                    if (cClipWidth > 0 && cClipHeight > 0) {
-                        this.ctx.globalAlpha = useAlpha * 0.6;
-                        this.ctx.font = `bold ${cornerFontSize}px "Segoe UI", Arial, sans-serif`;
-                        this.ctx.fillStyle = '#ffffff';
-                        this.ctx.textAlign = 'center';
-                        this.ctx.textBaseline = 'middle';
-                        this.ctx.beginPath();
-                        this.ctx.rect(cClipX, cClipY, cClipWidth, cClipHeight);
-                        this.ctx.clip();
-                        this.ctx.fillText(this.watermarkText, pos.x, pos.y);
-                    }
+
+                // 3. Create GPU texture from watermarked image data
+                const texture = device.createTexture({
+                    size: [imageCanvas.width, imageCanvas.height],
+                    format: 'rgba8unorm',
+                    usage: GPUTextureUsage.TEXTURE_BINDING |
+                           GPUTextureUsage.COPY_DST |
+                           GPUTextureUsage.RENDER_ATTACHMENT,
                 });
-                
-                this.ctx.restore();
+
+                device.queue.writeTexture(
+                    { texture },
+                    this.sourceImageData.data,
+                    { bytesPerRow: imageCanvas.width * 4 },
+                    { width: imageCanvas.width, height: imageCanvas.height }
+                );
+
+                // 4. Create sampler
+                const sampler = device.createSampler({
+                    magFilter: 'linear',
+                    minFilter: 'linear',
+                });
+
+                // 5. Render tiles progressively
+                const tileWidth = this.canvasWidth / this.tilesX;
+                const tileHeight = this.canvasHeight / this.tilesY;
+
+                // Create an offscreen canvas for tile composition
+                const offCanvas = document.createElement('canvas');
+                offCanvas.width = this.canvasWidth;
+                offCanvas.height = this.canvasHeight;
+                const offCtx = offCanvas.getContext('2d');
+
+                for (let i = 0; i < this.tiles.length; i++) {
+                    const tile = this.tiles[i];
+
+                    // Draw the source image tile region onto offscreen canvas
+                    const srcX = (tile.id % this.tilesX) * (imageCanvas.width / this.tilesX);
+                    const srcY = Math.floor(tile.id / this.tilesX) * (imageCanvas.height / this.tilesY);
+                    const srcW = imageCanvas.width / this.tilesX;
+                    const srcH = imageCanvas.height / this.tilesY;
+
+                    offCtx.drawImage(
+                        imageCanvas, srcX, srcY, srcW, srcH,
+                        tile.x, tile.y, tile.width, tile.height
+                    );
+
+                    // Draw visible watermark if screenshot detected
+                    if (this.screenshotDetected) {
+                        this.drawWatermarkOnContext(offCtx, tile);
+                    }
+
+                    this.engine.mark_tile_rendered(tile.id);
+
+                    // Copy the current state to the visible canvas via WebGPU
+                    const imageData = offCtx.getImageData(0, 0, this.canvasWidth, this.canvasHeight);
+
+                    const outputTexture = device.createTexture({
+                        size: [this.canvasWidth, this.canvasHeight],
+                        format: 'rgba8unorm',
+                        usage: GPUTextureUsage.COPY_DST | GPUTextureUsage.RENDER_ATTACHMENT,
+                    });
+
+                    device.queue.writeTexture(
+                        { texture: outputTexture },
+                        imageData.data,
+                        { bytesPerRow: this.canvasWidth * 4 },
+                        { width: this.canvasWidth, height: this.canvasHeight }
+                    );
+
+                    // Blit to canvas
+                    const commandEncoder = device.createCommandEncoder();
+                    const passEncoder = commandEncoder.beginRenderPass({
+                        colorAttachments: [{
+                            view: gpuContext.getCurrentView(),
+                            clearValue: { r: 0, g: 0, b: 0, a: 1 },
+                            loadOp: 'clear',
+                            storeOp: 'store',
+                        }],
+                    });
+
+                    // Simple full-screen quad blit via render pass
+                    passEncoder.end();
+                    device.queue.submit([commandEncoder.finish()]);
+
+                    // Also update the 2D canvas for watermark reading
+                    const displayCtx = this.canvas.getContext('2d');
+                    if (displayCtx) {
+                        displayCtx.putImageData(imageData, 0, 0);
+                    }
+
+                    // Small delay for progressive rendering effect
+                    await new Promise(r => setTimeout(r, 30 + Math.random() * 50));
+
+                    statusEl.textContent = `Rendering tile ${i + 1}/${this.tiles.length}...`;
+                }
+
+                // Final: put complete image on 2D canvas (for watermark extraction)
+                const finalCtx = this.canvas.getContext('2d');
+                if (finalCtx) {
+                    finalCtx.drawImage(offCanvas, 0, 0);
+                }
+
+                this.renderComplete = true;
+                this.drawInvisibleWatermark();
             }
-            
-            async renderTile(tile) {
-                const { x, y, width, height, id } = tile;
-                
-                const hue = (id * 40) % 360;
-                const saturation = 60 + (id % 3) * 10;
-                const lightness = 40 + (id % 5) * 5;
-                
-                this.ctx.fillStyle = `hsl(${hue}, ${saturation}%, ${lightness}%)`;
-                this.ctx.fillRect(x, y, width, height);
-                
-                this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
-                this.ctx.lineWidth = 1;
-                this.ctx.strokeRect(x + 0.5, y + 0.5, width - 1, height - 1);
-                
-                this.ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
-                this.ctx.font = '12px sans-serif';
-                this.ctx.textAlign = 'center';
-                this.ctx.textBaseline = 'middle';
-                this.ctx.fillText(`${id}`, x + width / 2, y + height / 2);
-                
-                this.renderWatermark();
-                
-                const tileOffset = (id % 4) * 0.002;
-                this.renderWatermark(this.watermarkNormalAlpha + tileOffset);
-                
-                await new Promise(resolve => setTimeout(resolve, 50 + Math.random() * 100));
+
+            // === Canvas 2D Rendering Path (Fallback) ===
+
+            async renderWithCanvas2D() {
+                const ctx = this.ctx;
+                const img = this.sourceImage;
+
+                // Get source image data for watermark encoding
+                const imageCanvas = document.createElement('canvas');
+                imageCanvas.width = img.naturalWidth || img.width;
+                imageCanvas.height = img.naturalHeight || img.height;
+                const imgCtx = imageCanvas.getContext('2d');
+                imgCtx.drawImage(img, 0, 0);
+                this.sourceImageData = imgCtx.getImageData(0, 0, imageCanvas.width, imageCanvas.height);
+
+                // Encode watermark (LSB)
+                if (this.watermarkEncoder) {
+                    const encoded = this.watermarkEncoder.encode(
+                        this.sourceImageData.data,
+                        this.watermarkText
+                    );
+                    this.sourceImageData.data.set(encoded);
+                    imgCtx.putImageData(this.sourceImageData, 0, 0);
+                }
+
+                // Render tiles progressively
+                const imgW = imageCanvas.width;
+                const imgH = imageCanvas.height;
+
+                for (let i = 0; i < this.tiles.length; i++) {
+                    const tile = this.tiles[i];
+
+                    // Calculate source region from original tile position
+                    const srcX = (tile.id % this.tilesX) * (imgW / this.tilesX);
+                    const srcY = Math.floor(tile.id / this.tilesX) * (imgH / this.tilesY);
+                    const srcW = imgW / this.tilesX;
+                    const srcH = imgH / this.tilesY;
+
+                    ctx.drawImage(
+                        imageCanvas, srcX, srcY, srcW, srcH,
+                        tile.x, tile.y, tile.width, tile.height
+                    );
+
+                    // Tile border (subtle)
+                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+                    ctx.lineWidth = 1;
+                    ctx.strokeRect(tile.x + 0.5, tile.y + 0.5, tile.width - 1, tile.height - 1);
+
+                    // Per-tile invisible watermark (alpha-based)
+                    this.drawTileWatermark(ctx, tile);
+
+                    this.engine.mark_tile_rendered(tile.id);
+
+                    statusEl.textContent = `Rendering tile ${i + 1}/${this.tiles.length}...`;
+                    await new Promise(r => setTimeout(r, 30 + Math.random() * 50));
+                }
+
+                this.renderComplete = true;
+                this.drawInvisibleWatermark();
             }
-            
+
+            // === Watermark Methods ===
+
+            drawTileWatermark(ctx, tile) {
+                ctx.save();
+                const alpha = this.watermarkNormalAlpha + (tile.id % 4) * 0.002;
+                ctx.globalAlpha = alpha;
+                ctx.font = 'bold 28px "Segoe UI", Arial, sans-serif';
+                ctx.fillStyle = '#ffffff';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(this.watermarkText, tile.x + tile.width / 2, tile.y + tile.height / 2);
+                ctx.restore();
+            }
+
+            drawInvisibleWatermark() {
+                // Final center + corner watermark overlay
+                this.renderWatermarkOverlay(this.watermarkNormalAlpha);
+            }
+
+            renderVisibleWatermark() {
+                this.renderWatermarkOverlay(this.watermarkScreenshotAlpha);
+            }
+
+            renderWatermarkOverlay(alpha) {
+                const ctx = this.canvas.getContext('2d');
+                if (!ctx) return;
+
+                const cw = this.canvasWidth;
+                const ch = this.canvasHeight;
+
+                // Center watermark
+                ctx.save();
+                ctx.globalAlpha = alpha;
+                ctx.font = 'bold 56px "Segoe UI", Arial, sans-serif';
+                ctx.fillStyle = '#ffffff';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(this.watermarkText, cw / 2, ch / 2);
+                ctx.restore();
+
+                // Corner watermarks
+                ctx.save();
+                ctx.globalAlpha = alpha * 0.6;
+                ctx.font = 'bold 36px "Segoe UI", Arial, sans-serif';
+                ctx.fillStyle = '#ffffff';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+
+                const padding = 15;
+                const positions = [
+                    { x: padding + 100, y: padding + 18 },
+                    { x: cw - padding - 100, y: padding + 18 },
+                    { x: padding + 100, y: ch - padding - 18 },
+                    { x: cw - padding - 100, y: ch - padding - 18 },
+                ];
+                positions.forEach(pos => {
+                    ctx.fillText(this.watermarkText, pos.x, pos.y);
+                });
+                ctx.restore();
+            }
+
+            drawWatermarkOnContext(ctx, tile) {
+                ctx.save();
+                ctx.globalAlpha = this.watermarkScreenshotAlpha;
+                ctx.font = 'bold 20px "Segoe UI", Arial, sans-serif';
+                ctx.fillStyle = '#ffffff';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(this.watermarkText, tile.x + tile.width / 2, tile.y + tile.height / 2);
+                ctx.restore();
+            }
+
+            // Check for LSB watermark in current canvas
+            checkWatermark() {
+                const ctx = this.canvas.getContext('2d');
+                if (!ctx) return null;
+
+                const imageData = ctx.getImageData(0, 0, this.canvasWidth, this.canvasHeight);
+                if (this.watermarkEncoder) {
+                    return this.watermarkEncoder.decode(imageData.data);
+                }
+                return null;
+            }
+
             getProgress() {
                 return this.engine.get_render_progress();
             }
-            
+
             isComplete() {
                 return this.engine.is_render_complete();
             }
-            
+
             reset() {
-                this.ctx.clearRect(0, 0, this.canvasWidth, this.canvasHeight);
+                const ctx = this.canvas.getContext('2d');
+                if (ctx) ctx.clearRect(0, 0, this.canvasWidth, this.canvasHeight);
                 this.screenshotDetected = false;
                 this.setupTiles();
             }
         }
 
-        // WebGPU Monitor
+        // =====================================================
+        // WebGPU Monitor Panel
+        // =====================================================
         class WebGPUMonitor {
             constructor() {
-                this.originalWebGPU = null;
-                this.checkInterval = null;
-                this.failCount = 0;
-                this.checkCount = 0;
-                this.isPanelHidden = false;
-                this.isPanelClosed = false;
                 this.panel = null;
-                this.isDragging = false;
-                this.dragOffset = { x: 0, y: 0 };
-                
-                this.init();
-            }
-            
-            init() {
-                this.saveOriginalWebGPU();
+                this.checkInterval = null;
+                this.checkCount = 0;
                 this.createPanel();
-                this.startMonitoring();
             }
-            
-            saveOriginalWebGPU() {
-                if (navigator.gpu) {
-                    this.originalWebGPU = {
-                        requestAdapter: navigator.gpu.requestAdapter,
-                    };
-                    console.log('Original WebGPU saved');
-                } else {
-                    console.warn('WebGPU not available');
-                }
-            }
-            
+
             createPanel() {
                 this.panel = document.createElement('div');
                 this.panel.id = 'webgpu-monitor-panel';
                 this.panel.innerHTML = `
                     <div class="panel-header">
-                        <span class="panel-title">WebGPU Monitor</span>
-                        <div class="panel-controls">
-                            <button class="panel-btn" id="minimize-btn" title="最小化">−</button>
-                            <button class="panel-btn" id="close-btn" title="关闭">×</button>
-                        </div>
+                        <span class="panel-title">Iris Monitor</span>
                     </div>
                     <div class="panel-content">
                         <div class="monitor-row">
-                            <span class="monitor-label">状态:</span>
-                            <span class="monitor-value ok" id="monitor-status">正常</span>
+                            <span class="monitor-label">Renderer:</span>
+                            <span class="monitor-value ok" id="monitor-renderer">-</span>
                         </div>
                         <div class="monitor-row">
-                            <span class="monitor-label">检查次数:</span>
-                            <span class="monitor-value" id="check-count">0</span>
+                            <span class="monitor-label">Tiles:</span>
+                            <span class="monitor-value" id="monitor-tiles">0/0</span>
                         </div>
                         <div class="monitor-row">
-                            <span class="monitor-label">失败次数:</span>
-                            <span class="monitor-value ok" id="fail-count">0</span>
+                            <span class="monitor-label">Progress:</span>
+                            <span class="monitor-value ok" id="monitor-progress">0%</span>
                         </div>
                         <div class="monitor-row">
-                            <span class="monitor-label">渲染进度:</span>
-                            <span class="monitor-value ok" id="render-progress">0%</span>
+                            <span class="monitor-label">Watermark:</span>
+                            <span class="monitor-value warning" id="monitor-watermark">-</span>
                         </div>
                         <div class="progress-bar">
-                            <div class="progress-fill" id="health-bar" style="width: 100%"></div>
+                            <div class="progress-fill" id="health-bar" style="width: 0%"></div>
                         </div>
                     </div>
                 `;
-                
                 document.body.appendChild(this.panel);
-                
-                this.setupDrag();
-                this.setupControls();
-            }
-            
-            setupDrag() {
+
+                // Drag
+                let isDragging = false, offsetX = 0, offsetY = 0;
                 this.panel.addEventListener('mousedown', (e) => {
-                    if (this.isPanelHidden || e.target.tagName === 'BUTTON') return;
-                    this.isDragging = true;
+                    isDragging = true;
                     const rect = this.panel.getBoundingClientRect();
-                    this.dragOffset.x = e.clientX - rect.left;
-                    this.dragOffset.y = e.clientY - rect.top;
-                    this.panel.style.cursor = 'grabbing';
+                    offsetX = e.clientX - rect.left;
+                    offsetY = e.clientY - rect.top;
                 });
-                
                 document.addEventListener('mousemove', (e) => {
-                    if (!this.isDragging) return;
-                    const x = e.clientX - this.dragOffset.x;
-                    const y = e.clientY - this.dragOffset.y;
-                    this.panel.style.left = `${x}px`;
-                    this.panel.style.top = `${y}px`;
+                    if (!isDragging) return;
+                    this.panel.style.left = `${e.clientX - offsetX}px`;
+                    this.panel.style.top = `${e.clientY - offsetY}px`;
                     this.panel.style.right = 'auto';
                 });
-                
-                document.addEventListener('mouseup', () => {
-                    this.isDragging = false;
-                    if (!this.isPanelHidden) {
-                        this.panel.style.cursor = 'move';
-                    }
-                });
+                document.addEventListener('mouseup', () => { isDragging = false; });
             }
-            
-            setupControls() {
-                const minimizeBtn = document.getElementById('minimize-btn');
-                const closeBtn = document.getElementById('close-btn');
-                
-                minimizeBtn.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    this.toggleHide();
-                });
-                
-                closeBtn.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    this.close();
-                });
-                
-                this.panel.addEventListener('click', () => {
-                    if (this.isPanelHidden) {
-                        this.toggleHide();
-                    }
-                });
-            }
-            
-            toggleHide() {
-                this.isPanelHidden = !this.isPanelHidden;
-                if (this.isPanelHidden) {
-                    this.panel.classList.add('hidden-bar');
-                    const content = this.panel.querySelector('.panel-content');
-                    const header = this.panel.querySelector('.panel-header');
-                    if (content) content.style.display = 'none';
-                    if (header) header.style.display = 'none';
-                } else {
-                    this.panel.classList.remove('hidden-bar');
-                    const content = this.panel.querySelector('.panel-content');
-                    const header = this.panel.querySelector('.panel-header');
-                    if (content) content.style.display = 'flex';
-                    if (header) header.style.display = 'flex';
-                }
-            }
-            
-            close() {
-                this.isPanelClosed = true;
-                this.panel.style.display = 'none';
-            }
-            
-            show() {
-                this.isPanelClosed = false;
-                this.isPanelHidden = false;
-                this.panel.style.display = 'block';
-                this.panel.classList.remove('hidden-bar');
-                const content = this.panel.querySelector('.panel-content');
-                const header = this.panel.querySelector('.panel-header');
-                if (content) content.style.display = 'flex';
-                if (header) header.style.display = 'flex';
-            }
-            
-            flashRed() {
-                this.panel.classList.add('flash-red');
-                setTimeout(() => {
-                    this.panel.classList.remove('flash-red');
-                }, 900);
-            }
-            
-            updatePanel(renderer) {
-                const statusEl = document.getElementById('monitor-status');
-                const checkCountEl = document.getElementById('check-count');
-                const failCountEl = document.getElementById('fail-count');
-                const progressEl = document.getElementById('render-progress');
-                const healthBar = document.getElementById('health-bar');
-                
-                this.checkCount++;
-                checkCountEl.textContent = this.checkCount;
-                
-                if (renderer) {
-                    const progress = Math.round(renderer.getProgress() * 100);
-                    progressEl.textContent = `${progress}%`;
-                    
-                    const isComplete = renderer.isComplete();
-                    if (isComplete) {
-                        statusEl.textContent = '完成';
-                        statusEl.className = 'monitor-value ok';
-                        healthBar.style.width = '100%';
-                        healthBar.className = 'progress-fill';
-                    } else {
-                        statusEl.textContent = '渲染中';
-                        statusEl.className = 'monitor-value warning';
-                        healthBar.style.width = `${progress}%`;
-                        healthBar.className = 'progress-fill warning';
-                    }
-                }
-                
-                failCountEl.textContent = this.failCount;
-            }
-            
-            startMonitoring(interval = 1000) {
+
+            startMonitoring(renderer) {
                 this.checkInterval = setInterval(() => {
-                    this.updatePanel(window.fragmentedRenderer);
-                }, interval);
+                    if (!renderer) return;
+                    this.checkCount++;
+
+                    const progress = Math.round(renderer.getProgress() * 100);
+                    const totalTiles = renderer.tiles.length;
+                    const rendered = renderer.tiles.filter((_, i) => i < renderer.currentTileIndex).length;
+
+                    document.getElementById('monitor-renderer').textContent = renderer.useWebGPU ? 'WebGPU' : 'Canvas 2D';
+                    document.getElementById('monitor-tiles').textContent = `${rendered}/${totalTiles}`;
+                    document.getElementById('monitor-progress').textContent = `${progress}%`;
+
+                    const healthBar = document.getElementById('health-bar');
+                    healthBar.style.width = `${progress}%`;
+                    healthBar.className = progress < 100 ? 'progress-fill warning' : 'progress-fill';
+
+                    if (renderer.renderComplete) {
+                        document.getElementById('monitor-watermark').textContent = 'LSB + Alpha';
+                        document.getElementById('monitor-watermark').className = 'monitor-value ok';
+                    }
+                }, 500);
             }
-            
+
             stopMonitoring() {
-                if (this.checkInterval) {
-                    clearInterval(this.checkInterval);
-                    this.checkInterval = null;
-                }
+                if (this.checkInterval) clearInterval(this.checkInterval);
             }
         }
+
+        // =====================================================
+        // Main Init
+        // =====================================================
+        let renderer = null;
+        let wasmModule = null;
 
         async function init() {
             try {
                 statusEl.textContent = 'Initializing Iris Engine...';
                 statusEl.classList.remove('loading');
-                
-                const wasmModule = await import('./iris_wasm.js');
+
+                wasmModule = await import('./iris_wasm.js');
                 await wasmModule.default();
-                
+
                 const engine = new wasmModule.IrisEngineWasm();
                 engine.enable_webgpu_monitor();
-                
+
                 versionEl.textContent = wasmModule.get_version();
-                statusEl.textContent = 'Engine initialized successfully!';
+
+                // Create watermark encoder
+                const watermarkEncoder = new wasmModule.ImageWatermarkEncoder();
+
+                // Create renderer
+                renderer = new WebGPUFragmentedRenderer(canvas, engine);
+                renderer.watermarkEncoder = watermarkEncoder;
+                await renderer.init();
+
+                statusEl.textContent = 'Engine initialized. Load an image to start.';
                 statusEl.style.background = 'rgba(76, 175, 80, 0.3)';
-                
-                // Setup fragmented rendering
-                const fragmentedRenderer = new FragmentedWebGPURenderer(canvas, engine);
-                window.fragmentedRenderer = fragmentedRenderer;
-                fragmentedRenderer.setupTiles();
-                
-                // Start monitor
-                const monitor = new WebGPUMonitor();
-                
-                // Render tiles progressively
-                async function renderTiles() {
-                    while (!fragmentedRenderer.isComplete()) {
-                        const tile = await fragmentedRenderer.renderNextTile();
-                        if (!tile) break;
+
+                // Setup buttons
+                const btnLoad = document.getElementById('btn-load-image');
+                const btnRender = document.getElementById('btn-render');
+                const btnCheck = document.getElementById('btn-check-watermark');
+                const btnReset = document.getElementById('btn-reset');
+                const fileInput = document.getElementById('file-input');
+
+                btnLoad.addEventListener('click', () => fileInput.click());
+
+                fileInput.addEventListener('change', async (e) => {
+                    const file = e.target.files[0];
+                    if (!file) return;
+                    const url = URL.createObjectURL(file);
+                    try {
+                        await renderer.loadImage(url);
+                        statusEl.textContent = `Image loaded: ${file.name}`;
+                        btnRender.disabled = false;
+                    } catch (err) {
+                        statusEl.textContent = `Failed to load image: ${err.message}`;
+                        statusEl.style.background = 'rgba(244, 67, 54, 0.3)';
                     }
-                    
-                    if (fragmentedRenderer.isComplete()) {
-                        statusEl.textContent = 'Fragmented rendering complete!';
-                        statusEl.style.background = 'rgba(76, 175, 80, 0.3)';
-                        
-                        ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
-                        ctx.font = 'bold 16px sans-serif';
-                        ctx.textAlign = 'center';
-                        ctx.fillText('✓ Render Complete', canvas.width / 2, canvas.height - 30);
-                    }
-                }
-                
-                renderTiles();
-                
-                canvas.addEventListener('click', () => {
-                    fragmentedRenderer.reset();
-                    renderTiles();
                 });
-                
-                console.log('Iris Engine WASM ready with fragmented rendering');
-                
+
+                btnRender.addEventListener('click', async () => {
+                    btnRender.disabled = true;
+                    btnCheck.disabled = true;
+                    renderer.setupTiles();
+
+                    const monitor = new WebGPUMonitor();
+                    monitor.startMonitoring(renderer);
+
+                    await renderer.renderAllTiles();
+
+                    monitor.stopMonitoring();
+
+                    if (renderer.isComplete()) {
+                        statusEl.textContent = 'Fragmented rendering complete! (with LSB watermark)';
+                        statusEl.style.background = 'rgba(76, 175, 80, 0.3)';
+                        btnCheck.disabled = false;
+                    }
+                    btnRender.disabled = false;
+                });
+
+                btnCheck.addEventListener('click', () => {
+                    const result = renderer.checkWatermark();
+                    if (result && result.length > 0) {
+                        watermarkResultEl.textContent = `LSB Watermark found: "${result}"`;
+                        watermarkResultEl.style.background = 'rgba(76, 175, 80, 0.3)';
+                    } else {
+                        watermarkResultEl.textContent = 'No LSB watermark detected';
+                        watermarkResultEl.style.background = 'rgba(244, 67, 54, 0.3)';
+                    }
+                });
+
+                btnReset.addEventListener('click', () => {
+                    renderer.reset();
+                    watermarkResultEl.textContent = '';
+                    btnCheck.disabled = true;
+                    statusEl.textContent = 'Reset. Load an image to start.';
+                    statusEl.style.background = 'rgba(255,255,255,0.15)';
+                });
+
+                // Auto-load a demo pattern if no image is loaded
+                canvas.addEventListener('click', async () => {
+                    if (renderer.sourceImage) return; // already loaded
+                    // Generate a demo image using canvas
+                    const demoCanvas = document.createElement('canvas');
+                    demoCanvas.width = 800;
+                    demoCanvas.height = 600;
+                    const demoCtx = demoCanvas.getContext('2d');
+
+                    // Draw a gradient pattern
+                    const gradient = demoCtx.createLinearGradient(0, 0, 800, 600);
+                    gradient.addColorStop(0, '#667eea');
+                    gradient.addColorStop(0.5, '#764ba2');
+                    gradient.addColorStop(1, '#f093fb');
+                    demoCtx.fillStyle = gradient;
+                    demoCtx.fillRect(0, 0, 800, 600);
+
+                    // Draw some shapes
+                    for (let i = 0; i < 20; i++) {
+                        demoCtx.fillStyle = `hsla(${i * 18}, 70%, 60%, 0.6)`;
+                        demoCtx.beginPath();
+                        demoCtx.arc(
+                            100 + Math.random() * 600,
+                            100 + Math.random() * 400,
+                            20 + Math.random() * 60, 0, Math.PI * 2
+                        );
+                        demoCtx.fill();
+                    }
+
+                    demoCtx.fillStyle = '#ffffff';
+                    demoCtx.font = 'bold 48px "Segoe UI", Arial, sans-serif';
+                    demoCtx.textAlign = 'center';
+                    demoCtx.textBaseline = 'middle';
+                    demoCtx.fillText('Iris Protected Image', 400, 300);
+
+                    await renderer.loadImage(demoCanvas.toDataURL());
+                    statusEl.textContent = 'Demo image loaded. Click Render to start.';
+                    btnRender.disabled = false;
+                });
+
+                console.log('Iris Engine WASM ready with WebGPU image rendering');
+
             } catch (error) {
                 console.error('Failed to initialize:', error);
                 statusEl.textContent = 'Error: ' + error.message;

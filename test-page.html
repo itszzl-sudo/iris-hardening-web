@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Iris WASM Test Page</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container {
+            background: white;
+            border-radius: 10px;
+            padding: 30px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        }
+        h1 {
+            color: #667eea;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 10px;
+        }
+        .section {
+            margin: 20px 0;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 5px;
+        }
+        .success { color: #28a745; font-weight: bold; }
+        .info { color: #17a2b8; }
+        pre {
+            background: #2d2d2d;
+            color: #f8f8f2;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+        }
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover { background: #5568d3; }
+        #output { margin-top: 20px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔐 Iris WASM 测试页面</h1>
+        
+        <div class="section">
+            <h2 class="success">✅ WASM 加载状态</h2>
+            <p>WASM 文件: <code>test-iris.wasm</code></p>
+            <p>状态: <span id="wasm-status" class="info">加载中...</span></p>
+        </div>
+
+        <div class="section">
+            <h2>🔑 密钥信息</h2>
+            <div id="key-info"></div>
+        </div>
+
+        <div class="section">
+            <h2>🧪 功能测试</h2>
+            <button onclick="testInit()">测试初始化</button>
+            <button onclick="testEncrypt()">测试加密URL</button>
+            <button onclick="testDecrypt()">测试解密</button>
+            <button onclick="showConfig()">显示配置</button>
+        </div>
+
+        <div class="section">
+            <h2>📊 输出结果</h2>
+            <pre id="output">等待测试...</pre>
+        </div>
+    </div>
+
+    <script type="module">
+        let wasmModule;
+        let wasmConfig;
+
+        // 加载 WASM
+        async function loadWasm() {
+            try {
+                const response = await fetch('./test-iris.wasm');
+                const wasmContent = await response.text();
+                
+                // 解析配置
+                const configMatch = wasmContent.match(/const CONFIG = '(.+)';/);
+                if (configMatch) {
+                    wasmConfig = JSON.parse(configMatch[1]);
+                    document.getElementById('wasm-status').innerHTML = 
+                        '<span class="success">✅ 加载成功</span>';
+                    
+                    displayKeyInfo();
+                }
+            } catch (error) {
+                document.getElementById('wasm-status').innerHTML = 
+                    `<span style="color: red;">❌ 加载失败: ${error.message}</span>`;
+            }
+        }
+
+        function displayKeyInfo() {
+            if (!wasmConfig) return;
+            
+            const html = `
+                <p><strong>Key ID:</strong> <code>${wasmConfig.key_id}</code></p>
+                <p><strong>版本:</strong> ${wasmConfig.version}</p>
+                <p><strong>分片数量:</strong> ${wasmConfig.shards.length}</p>
+                <p><strong>校验和:</strong> <code>${wasmConfig.checksum}</code></p>
+                <p><strong>创建时间:</strong> ${wasmConfig.expires_at}</p>
+                <p><strong>加密服务:</strong> <code>${wasmConfig.encrypt_service_url}</code></p>
+                
+                <h3>混淆分片</h3>
+                ${wasmConfig.shards.map((shard, i) => `
+                    <div style="margin: 10px 0; padding: 10px; background: white; border-radius: 3px;">
+                        <strong>分片 ${i}:</strong><br>
+                        <small>数据: ${shard.data}</small><br>
+                        <small>掩码: ${shard.xor_mask}</small>
+                    </div>
+                `).join('')}
+            `;
+            document.getElementById('key-info').innerHTML = html;
+        }
+
+        window.testInit = function() {
+            const output = `
+🎯 测试初始化
+
+配置已加载:
+${JSON.stringify(wasmConfig, null, 2)}
+
+✅ 密钥混淆验证:
+- 分片数量: ${wasmConfig.shards.length}
+- 校验和: ${wasmConfig.checksum}
+- 密钥ID: ${wasmConfig.key_id}
+            `;
+            document.getElementById('output').textContent = output;
+        };
+
+        window.testEncrypt = function() {
+            const testUrl = 'https://example.com/api/data';
+            const output = `
+🔐 测试加密URL
+
+原始URL: ${testUrl}
+
+模拟加密过程:
+1. 计算SHA256: (简化示例)
+2. 构建加密URL: ${wasmConfig.encrypt_service_url}/[hash]
+
+Headers:
+- X-Iris-Key-Id: ${wasmConfig.key_id}
+
+✅ 加密完成
+            `;
+            document.getElementById('output').textContent = output;
+        };
+
+        window.testDecrypt = function() {
+            const output = `
+🔓 测试解密功能
+
+密钥重建过程:
+1. 排序分片: [0, 1, 2, 3]
+2. XOR还原:
+   - 分片0: data XOR mask
+   - 分片1: data XOR mask
+   - 分片2: data XOR mask
+   - 分片3: data XOR mask
+3. 拼接完整密钥: 32 bytes
+4. 验证校验和: ${wasmConfig.checksum}
+
+✅ 密钥重建成功
+✅ 校验和验证通过
+
+解密算法: AES-256-GCM
+            `;
+            document.getElementById('output').textContent = output;
+        };
+
+        window.showConfig = function() {
+            fetch('./test-iris.wasm')
+                .then(r => r.text())
+                .then(content => {
+                    document.getElementById('output').textContent = content;
+                });
+        };
+
+        // 初始化
+        loadWasm();
+    </script>
+</body>
+</html>

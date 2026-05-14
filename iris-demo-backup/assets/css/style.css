@@ -1,0 +1,205 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: #0a0a1a;
+    color: #e0e0e0;
+    line-height: 1.6;
+}
+
+header {
+    background: linear-gradient(135deg, #1a1a3e 0%, #0d0d2b 100%);
+    padding: 3rem 2rem;
+    text-align: center;
+    border-bottom: 2px solid #4a4aff;
+}
+
+header h1 {
+    font-size: 2.5rem;
+    background: linear-gradient(90deg, #6a6aff, #00d4ff);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 0.5rem;
+}
+
+header p {
+    color: #8888cc;
+    font-size: 1.1rem;
+}
+
+nav {
+    background: #111130;
+    padding: 1rem 2rem;
+    display: flex;
+    gap: 2rem;
+    justify-content: center;
+    border-bottom: 1px solid #2a2a5a;
+}
+
+nav a {
+    color: #8888ff;
+    text-decoration: none;
+    font-weight: 500;
+    transition: color 0.2s;
+}
+
+nav a:hover {
+    color: #aaaaff;
+}
+
+main {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 2rem;
+}
+
+section {
+    margin-bottom: 3rem;
+}
+
+h2 {
+    color: #ccccff;
+    font-size: 1.8rem;
+    margin-bottom: 1rem;
+    border-left: 4px solid #6a6aff;
+    padding-left: 1rem;
+}
+
+.feature-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1.5rem;
+}
+
+.feature-card {
+    background: #151535;
+    border: 1px solid #2a2a5a;
+    border-radius: 12px;
+    padding: 1.5rem;
+    text-align: center;
+    transition: transform 0.2s, border-color 0.2s;
+}
+
+.feature-card:hover {
+    transform: translateY(-4px);
+    border-color: #6a6aff;
+}
+
+.feature-icon {
+    font-size: 2.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.feature-card h3 {
+    color: #aaaaff;
+    margin-bottom: 0.5rem;
+}
+
+.feature-card p {
+    color: #8888aa;
+    font-size: 0.9rem;
+}
+
+.gallery {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1.5rem;
+}
+
+.gallery-item {
+    background: #151535;
+    border: 1px solid #2a2a5a;
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.gallery-item img,
+.gallery-item canvas {
+    width: 100%;
+    height: 200px;
+    object-fit: cover;
+    display: block;
+}
+
+.gallery-item p {
+    padding: 0.8rem 1rem;
+    color: #8888aa;
+    font-size: 0.85rem;
+    text-align: center;
+}
+
+.feature-card.webgpu {
+    border-color: #00d4ff;
+    background: linear-gradient(135deg, #151535 0%, #0a2535 100%);
+}
+
+.feature-card.webgpu h3 {
+    color: #00d4ff;
+}
+
+.hint {
+    color: #ff9800;
+    font-size: 0.9rem;
+    margin-top: 0.5rem;
+    font-style: italic;
+}
+
+#status-info, #sw-status, #renderer-status, #config-info {
+    background: #111130;
+    border: 1px solid #2a2a5a;
+    border-radius: 8px;
+    padding: 1rem 1.5rem;
+    margin-bottom: 1rem;
+    font-family: 'Fira Code', monospace;
+    font-size: 0.85rem;
+    white-space: pre-wrap;
+}
+
+.test-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.8rem;
+    margin-bottom: 1rem;
+}
+
+button {
+    background: #2a2a5a;
+    color: #ccccff;
+    border: 1px solid #4a4aff;
+    border-radius: 8px;
+    padding: 0.6rem 1.2rem;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: background 0.2s;
+}
+
+button:hover {
+    background: #3a3a7a;
+}
+
+#test-output {
+    background: #0d0d2b;
+    border: 1px solid #2a2a5a;
+    border-radius: 8px;
+    padding: 1rem;
+    min-height: 80px;
+    font-family: monospace;
+    font-size: 0.85rem;
+    color: #00d4ff;
+    white-space: pre-wrap;
+}
+
+footer {
+    text-align: center;
+    padding: 2rem;
+    color: #555588;
+    border-top: 1px solid #1a1a3e;
+}
+
+footer a {
+    color: #6a6aff;
+}

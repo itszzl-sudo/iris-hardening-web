@@ -1,10 +1,17 @@
 //! Iris Secure Gateway - 安全网关
 
 pub mod config;
+pub mod crypto;
 pub mod encrypt;
+pub mod path_transform;
+pub mod proxy;
+pub mod server;
 
 pub use config::Config;
 pub use encrypt::FileEncryptor;
+pub use path_transform::PathTransformer;
+pub use proxy::{ApiProxy, ProxyResponse};
+pub use server::SecureGateway;
 
 use thiserror::Error;
 
@@ -12,12 +19,15 @@ use thiserror::Error;
 pub enum Error {
     #[error("IO error: {0}")]
     Io(#[from] std::io::Error),
-    
+
     #[error("Encryption error: {0}")]
     Encryption(String),
-    
+
     #[error("Config error: {0}")]
     Config(String),
+
+    #[error("HTTP error: {0}")]
+    Http(String),
 }
 
 pub type Result<T> = std::result::Result<T, Error>;

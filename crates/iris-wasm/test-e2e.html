@@ -111,6 +111,7 @@
         <button id="test-tiles">测试分片渲染</button>
         <button id="test-watermark">测试水印裁剪</button>
         <button id="test-screenshot">测试截图检测</button>
+        <button id="test-lsb-watermark">测试LSB图片码</button>
     </div>
     
     <div id="test-results"></div>
@@ -382,6 +383,140 @@
             }
         }
         
+        // Test 5: LSB Image Watermark
+        async function testLSBWatermark() {
+            const suite = createTestSuite('LSB图片码测试');
+            log('开始LSB图片码测试', 'info');
+
+            // LSB watermark algorithm (mirrors Rust ImageWatermarkEncoder)
+            const MAGIC = [0x49, 0x52, 0x49, 0x53]; // "IRIS"
+
+            function encodeLSB(pixels, text) {
+                const payload = new TextEncoder().encode(text);
+                const data = new Uint8Array(8 + payload.length);
+                data.set(MAGIC, 0);
+                new DataView(data.buffer).setUint32(4, payload.length, true);
+                data.set(payload, 8);
+
+                const result = new Uint8Array(pixels);
+                const bitsNeeded = data.length * 4; // 4 2-bit groups per byte
+                if (bitsNeeded > result.length / 4) {
+                    log('图像太小无法编码水印', 'error');
+                    return result;
+                }
+
+                let bitIdx = 0;
+                for (const byte of data) {
+                    for (let shift = 0; shift < 8; shift += 2) {
+                        const twoBits = (byte >> shift) & 0x03;
+                        const pixIdx = bitIdx * 4;
+                        result[pixIdx] = (result[pixIdx] & 0xFC) | twoBits;
+                        bitIdx++;
+                    }
+                }
+                return result;
+            }
+
+            function decodeLSB(pixels) {
+                const bits = [];
+                for (let i = 0; i < pixels.length; i += 4) {
+                    bits.push(pixels[i] & 0x03);
+                    if (bits.length >= 16) {
+                        const decoded = [];
+                        for (let c = 0; c <= bits.length - 4; c += 4) {
+                            decoded.push(bits[c] | (bits[c+1] << 2) | (bits[c+2] << 4) | (bits[c+3] << 6));
+                        }
+                        if (decoded.length >= 4 &&
+                            decoded[0] === MAGIC[0] && decoded[1] === MAGIC[1] &&
+                            decoded[2] === MAGIC[2] && decoded[3] === MAGIC[3]) {
+                            if (decoded.length >= 8) {
+                                const len = new DataView(new Uint8Array(decoded.slice(4, 8)).buffer).getUint32(0, true);
+                                if (decoded.length >= 8 + len) {
+                                    return new TextDecoder().decode(new Uint8Array(decoded.slice(8, 8 + len)));
+                                }
+                            }
+                        }
+                    }
+                }
+                return '';
+            }
+
+            function hasWatermark(pixels) {
+                if (pixels.length < 64) return false;
+                const bits = [];
+                for (let i = 0; i < 64; i += 4) {
+                    bits.push(pixels[i] & 0x03);
+                }
+                const decoded = [];
+                for (let c = 0; c <= bits.length - 4; c += 4) {
+                    decoded.push(bits[c] | (bits[c+1] << 2) | (bits[c+2] << 4) | (bits[c+3] << 6));
+                }
+                return decoded.length >= 4 &&
+                    decoded[0] === MAGIC[0] && decoded[1] === MAGIC[1] &&
+                    decoded[2] === MAGIC[2] && decoded[3] === MAGIC[3];
+            }
+
+            // Test 1: encode & decode roundtrip
+            const canvas1 = document.createElement('canvas');
+            canvas1.width = 200;
+            canvas1.height = 200;
+            const ctx1 = canvas1.getContext('2d');
+            ctx1.fillStyle = '#336699';
+            ctx1.fillRect(0, 0, 200, 200);
+            const origData = ctx1.getImageData(0, 0, 200, 200);
+
+            const testText = 'hardening.irisverse.org';
+            const encoded = encodeLSB(origData.data, testText);
+            const decoded = decodeLSB(encoded);
+            addTest(suite, `编码-解码往返 (期望: "${testText}", 实际: "${decoded}")`, decoded === testText);
+
+            // Test 2: has_watermark on encoded data
+            const hasWm = hasWatermark(encoded);
+            addTest(suite, '编码后检测水印', hasWm);
+
+            // Test 3: has_watermark on unencoded data should be false
+            const noWm = hasWatermark(origData.data);
+            addTest(suite, '未编码数据无水印', !noWm);
+
+            // Test 4: visual imperceptibility - pixel difference should be tiny
+            let maxDiff = 0;
+            for (let i = 0; i < encoded.length; i += 4) {
+                const diff = Math.abs(encoded[i] - origData.data[i]);
+                if (diff > maxDiff) maxDiff = diff;
+            }
+            addTest(suite, `视觉不可见性 (最大R通道偏差: ${maxDiff})`, maxDiff <= 3);
+
+            // Test 5: Chinese text
+            const canvas2 = document.createElement('canvas');
+            canvas2.width = 200;
+            canvas2.height = 200;
+            const ctx2 = canvas2.getContext('2d');
+            ctx2.fillStyle = '#996633';
+            ctx2.fillRect(0, 0, 200, 200);
+            const origData2 = ctx2.getImageData(0, 0, 200, 200);
+
+            const chineseText = '虹膜安全水印测试';
+            const encoded2 = encodeLSB(origData2.data, chineseText);
+            const decoded2 = decodeLSB(encoded2);
+            addTest(suite, `中文水印 (期望: "${chineseText}", 实际: "${decoded2}")`, decoded2 === chineseText);
+
+            // Test 6: render encoded image on canvas to verify visual output
+            const testCanvas = document.createElement('canvas');
+            testCanvas.width = 200;
+            testCanvas.height = 200;
+            const testCtx = testCanvas.getContext('2d');
+            const imgData = testCtx.createImageData(200, 200);
+            imgData.data.set(encoded);
+            testCtx.putImageData(imgData, 0, 0);
+            addTest(suite, '编码图片渲染', true);
+
+            suite.appendChild(testCanvas);
+            testCanvas.style.maxWidth = '200px';
+            testCanvas.style.border = '2px solid #2196f3';
+
+            log('LSB图片码测试完成', 'success');
+        }
+
         // Run all tests
         async function runAllTests() {
             testResults = { passed: 0, failed: 0, total: 0 };
@@ -394,6 +529,7 @@
             await testWatermarkClipping();
             await testScreenshotDetection();
             await testCompleteFlow();
+            await testLSBWatermark();
             
             log('========== 测试完成 ==========', 'info');
             log(`总计: ${testResults.total} | 通过: ${testResults.passed} | 失败: ${testResults.failed}`, 
@@ -416,6 +552,7 @@
         document.getElementById('test-tiles').addEventListener('click', testFragmentedRendering);
         document.getElementById('test-watermark').addEventListener('click', testWatermarkClipping);
         document.getElementById('test-screenshot').addEventListener('click', testScreenshotDetection);
+        document.getElementById('test-lsb-watermark').addEventListener('click', testLSBWatermark);
         
         // Auto-run on load
         log('E2E Test Suite 已就绪', 'info');

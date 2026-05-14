@@ -1,0 +1,50 @@
+# Iris Gateway 统一配置
+#
+# 部署架构: nginx <-> iris-gateway <-> 内部服务器
+#
+# 合并了 iris-secure-gateway 和 iris-wasm-gateway 的能力
+
+# 内部 API 认证令牌 (必须在 [server] 之前，属于顶层字段)
+internal_token = "change-me-in-production"
+
+# nginx 健康检查路径
+health_check_path = "/health"
+
+[server]
+host = "127.0.0.1"
+port = 8080
+base_dir = "./data"        # 需加密保护的文件目录
+assets_dir = "./assets"    # 静态资源目录
+workers = 0                # 0 = 自动（等于 CPU 核心数）
+
+[encryption]
+key_file = "key.txt"       # 初始密钥文件（hex 编码的 32 字节）
+algorithm = "aes-256-gcm"
+
+[key]
+key_dir = "keys"                   # 密钥持久化目录
+validity_hours = 24                # 密钥有效期
+rotation_margin_hours = 2          # 提前轮换时间
+rotation_check_interval_seconds = 60  # 轮换检查间隔
+
+# 文件名映射: 真实文件名 -> 加密名
+[file_mappings]
+"secret/document.pdf" = "abc123"
+"private/data.json" = "def456"
+"config/settings.toml" = "xyz789"
+
+# API 路由转发: 匹配的请求转发到内部服务器
+[[api_routes]]
+pattern = "^/api/v1/.*"
+target = "http://localhost:3000"
+methods = ["GET", "POST", "PUT", "DELETE"]
+
+[[api_routes]]
+pattern = "^/auth/.*"
+target = "http://auth-server:8081"
+methods = ["POST"]
+
+[[api_routes]]
+pattern = "^/internal-api/.*"
+target = "http://backend:9090"
+methods = ["GET", "POST"]

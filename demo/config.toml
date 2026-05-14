@@ -1,0 +1,39 @@
+internal_token = "demo-token-2024"
+
+[server]
+host = "0.0.0.0"
+port = 8080
+base_dir = "data"
+assets_dir = "assets"
+workers = 0
+
+[encryption]
+key_file = "key.txt"
+algorithm = "aes-256-gcm"
+
+[key]
+key_dir = "keys"
+validity_hours = 24
+rotation_margin_hours = 2
+
+[file_mappings]
+# Images (JPG from Unsplash)
+"media/images/hero.jpg" = "h01"
+"media/images/office.jpg" = "of01"
+"media/images/product1.jpg" = "p01"
+"media/images/product2.jpg" = "p02"
+"media/images/product3.jpg" = "p03"
+"media/images/product4.jpg" = "p04"
+"media/images/team1.jpg" = "t01"
+"media/images/team2.jpg" = "t02"
+"media/images/team3.jpg" = "t03"
+"media/images/team4.jpg" = "t04"
+"media/images/team5.jpg" = "t05"
+# Logo (PNG)
+"media/images/logo.png" = "lg01"
+# Audio
+"media/audio/intro.wav" = "a01"
+"media/audio/ambient.wav" = "a02"
+"media/audio/notification.wav" = "a03"
+# Video
+"media/video/promo.mp4" = "v01"

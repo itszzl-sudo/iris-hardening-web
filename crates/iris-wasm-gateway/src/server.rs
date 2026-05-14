@@ -1,10 +1,18 @@
 //! HTTP 服务器
 
-use warp::{Filter, Reply};
+use warp::{Filter, Rejection, http::{StatusCode, Response}};
 use std::sync::Arc;
 use tokio::sync::RwLock;
-use std::path::PathBuf;
-use crate::{Config, KeyManager, WasmGenerator, Notifier, KeyPair, Result};
+use crate::{Config, KeyManager, WasmGenerator, Notifier, Result};
+
+fn json_response<T: serde::Serialize>(data: &T, status: StatusCode) -> Response<Vec<u8>> {
+    let body = serde_json::to_vec(data).unwrap_or_default();
+    Response::builder()
+        .status(status)
+        .header("Content-Type", "application/json")
+        .body(body)
+        .unwrap()
+}
 
 pub struct GatewayServer {
     config: Arc<Config>,
@@ -24,6 +32,7 @@ impl GatewayServer {
         let notifier = Notifier::new(
             config.encrypt_service.url.clone(),
             config.encrypt_service.update_key_endpoint.clone(),
+            config.encrypt_service.internal_token.clone(),
         )?;
         
         Ok(Self {
@@ -41,44 +50,42 @@ impl GatewayServer {
         
         let wasm_route = warp::path("iris.wasm")
             .and(warp::get())
-            .then({
+            .and_then({
                 let wasm = self.current_wasm.clone();
                 move || {
                     let wasm = wasm.clone();
                     async move {
                         let wasm = wasm.read().await;
-                        warp::http::Response::builder()
+                        Ok::<_, Rejection>(Response::builder()
                             .status(200)
                             .header("Content-Type", "application/wasm")
                             .header("Cache-Control", "no-cache")
                             .body(wasm.clone())
-                            .unwrap()
+                            .unwrap())
                     }
                 }
             });
         
         let status_route = warp::path("status")
             .and(warp::get())
-            .then({
+            .and_then({
                 let km = self.key_manager.clone();
                 move || {
                     let km = km.clone();
                     async move {
                         match km.load_current() {
                             Ok(key) => {
-                                let status = serde_json::json!({
+                                Ok::<_, Rejection>(json_response(&serde_json::json!({
                                     "status": "ok",
                                     "key_id": key.id.to_string(),
                                     "expires_at": key.expires_at.to_rfc3339(),
-                                });
-                                warp::reply::json(&status)
+                                }), StatusCode::OK))
                             }
                             Err(e) => {
-                                let status = serde_json::json!({
+                                Ok(json_response(&serde_json::json!({
                                     "status": "error",
                                     "message": e.to_string(),
-                                });
-                                warp::reply::json(&status)
+                                }), StatusCode::INTERNAL_SERVER_ERROR))
                             }
                         }
                     }
@@ -92,8 +99,16 @@ impl GatewayServer {
             .map_err(|e| crate::Error::Http(format!("Invalid address: {}", e)))?;
         
         tracing::info!("Gateway listening on {}", addr);
-        
-        warp::serve(routes).run(addr).await;
+
+        let (_, server) = warp::serve(routes)
+            .bind_with_graceful_shutdown(addr, async {
+                tokio::signal::ctrl_c()
+                    .await
+                    .expect("Failed to install Ctrl+C handler");
+                tracing::info!("Received shutdown signal, shutting down gracefully...");
+            });
+
+        server.await;
         
         Ok(())
     }
