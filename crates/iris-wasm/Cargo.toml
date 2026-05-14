@@ -25,6 +25,13 @@ web-sys = { workspace = true, features = [
     "WebGl2RenderingContext",
     "console",
     "Performance",
+    "Gpu",
+    "GpuCanvasContext",
+    "GpuDevice",
+    "GpuTexture",
+    "GpuCommandEncoder",
+    "GpuRenderPassEncoder",
+    "GpuQueue",
 ] }
 serde = { workspace = true }
 serde_json = { workspace = true }
@@ -32,3 +39,4 @@ tracing = { workspace = true }
 tracing-wasm = "0.2"
 console_error_panic_hook = "0.1"
 wee_alloc = "0.4"
+ab_glyph = { workspace = true }

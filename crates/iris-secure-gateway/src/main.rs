@@ -18,6 +18,11 @@ async fn main() -> anyhow::Result<()> {
     tracing::info!("Base dir: {:?}", config.server.base_dir);
     tracing::info!("Assets dir: {:?}", config.server.assets_dir);
 
+    if let Some(ref url) = config.config_server_url {
+        tracing::info!("Config server: {}", url);
+        tracing::info!("Poll interval: {}s", config.poll_interval_secs);
+    }
+
     let gateway = SecureGateway::new(config)?;
     gateway.run().await?;
 

@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Iris Secure Config - 配置管理</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            color: #e0e0e0;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        h1 {
+            color: #00d4ff;
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .subtitle {
+            color: #888;
+            font-size: 0.9rem;
+        }
+
+        .panel {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .panel-title {
+            font-size: 1.2rem;
+            color: #00d4ff;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .form-group {
+            margin-bottom: 1rem;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: #aaa;
+            font-size: 0.9rem;
+        }
+
+        input[type="text"],
+        input[type="number"],
+        textarea {
+            width: 100%;
+            padding: 0.75rem;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            font-size: 1rem;
+            transition: border-color 0.3s;
+        }
+
+        input:focus, textarea:focus {
+            outline: none;
+            border-color: #00d4ff;
+        }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            border: none;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: #00d4ff;
+            color: #1a1a2e;
+        }
+
+        .btn-primary:hover {
+            background: #00b8e6;
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.2);
+            color: #fff;
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .btn-danger {
+            background: #ff4757;
+            color: #fff;
+        }
+
+        .btn-danger:hover {
+            background: #ff6b7a;
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .domain-list {
+            display: grid;
+            gap: 1rem;
+        }
+
+        .domain-card {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            padding: 1rem;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .domain-info {
+            flex: 1;
+        }
+
+        .domain-name {
+            font-size: 1.2rem;
+            color: #fff;
+            margin-bottom: 0.25rem;
+        }
+
+        .domain-meta {
+            font-size: 0.85rem;
+            color: #888;
+        }
+
+        .domain-status {
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+
+        .status-pending {
+            background: rgba(255, 193, 7, 0.2);
+            color: #ffc107;
+        }
+
+        .status-synced {
+            background: rgba(0, 255, 136, 0.2);
+            color: #00ff88;
+        }
+
+        .status-failed {
+            background: rgba(255, 71, 87, 0.2);
+            color: #ff4757;
+        }
+
+        .domain-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .btn-sm {
+            padding: 0.5rem 1rem;
+            font-size: 0.85rem;
+        }
+
+        .config-output {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+            padding: 1rem;
+            margin-top: 1rem;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.85rem;
+            white-space: pre-wrap;
+            overflow-x: auto;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            padding: 1rem 1.5rem;
+            border-radius: 8px;
+            color: #fff;
+            font-weight: 500;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 0.3s;
+            z-index: 1000;
+        }
+
+        .toast.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .toast-success {
+            background: #00ff88;
+            color: #1a1a2e;
+        }
+
+        .toast-error {
+            background: #ff4757;
+            color: #fff;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 2rem;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid rgba(0, 212, 255, 0.3);
+            border-top-color: #00d4ff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 3rem;
+            color: #666;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.show {
+            display: flex;
+        }
+
+        .modal-content {
+            background: #1a1a2e;
+            border-radius: 12px;
+            padding: 2rem;
+            max-width: 600px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .modal-title {
+            font-size: 1.2rem;
+            color: #00d4ff;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            color: #888;
+            font-size: 1.5rem;
+            cursor: pointer;
+        }
+
+        .modal-close:hover {
+            color: #fff;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🔐 Iris Secure Config</h1>
+            <p class="subtitle">Nginx 配置与域名管理</p>
+        </header>
+
+        <!-- 创建域名表单 -->
+        <div class="panel">
+            <h2 class="panel-title">➕ 添加域名</h2>
+            <form id="addDomainForm">
+                <div style="display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 1rem;">
+                    <div class="form-group">
+                        <label>域名 (Nginx所在服务器域名)</label>
+                        <input type="text" id="domain" placeholder="例如: myserver.local 或 example.com" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Nginx 端口</label>
+                        <input type="number" id="nginxPort" value="80" min="1" max="65535">
+                    </div>
+                    <div class="form-group">
+                        <label>Gateway 端口</label>
+                        <input type="number" id="gatewayPort" value="9001" min="1" max="65535">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Gateway 主机地址 (可选, 默认 127.0.0.1)</label>
+                    <input type="text" id="gatewayHost" placeholder="例如: 127.0.0.1 或 192.168.1.100">
+                </div>
+                <button type="submit" class="btn btn-primary">创建域名配置</button>
+            </form>
+        </div>
+
+        <!-- 域名列表 -->
+        <div class="panel">
+            <h2 class="panel-title">📋 域名列表</h2>
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <p>加载中...</p>
+            </div>
+            <div class="domain-list" id="domainList"></div>
+        </div>
+
+        <!-- 配置预览 -->
+        <div class="panel" id="configPanel" style="display: none;">
+            <h2 class="panel-title">📄 Nginx 配置预览</h2>
+            <div style="display: flex; gap: 1rem; margin-bottom: 1rem;">
+                <button class="btn btn-secondary btn-sm" id="btnCopyConfig">复制配置</button>
+                <button class="btn btn-secondary btn-sm" id="btnDownloadConfig">下载配置</button>
+                <button class="btn btn-secondary btn-sm" id="btnDownloadNjs">下载 NJS</button>
+                <button class="btn btn-secondary btn-sm" id="btnCloseConfig">关闭</button>
+            </div>
+            <div class="config-output" id="configOutput"></div>
+        </div>
+    </div>
+
+    <!-- Toast 通知 -->
+    <div class="toast" id="toast"></div>
+
+    <script>
+        const API_BASE = '';
+
+        // Toast 通知
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = `toast toast-${type} show`;
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+
+        // 加载域名列表
+        async function loadDomains() {
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('domainList').innerHTML = '';
+
+            try {
+                const res = await fetch(`${API_BASE}/api/domains`);
+                const json = await res.json();
+
+                if (json.success && json.data && json.data.length > 0) {
+                    document.getElementById('domainList').innerHTML = json.data.map(domain => `
+                        <div class="domain-card">
+                            <div class="domain-info">
+                                <div class="domain-name">${escapeHtml(domain.domain)}</div>
+                                <div class="domain-meta">
+                                    Nginx: ${domain.nginx_port} | Gateway: ${domain.gateway_port} |
+                                    创建: ${new Date(domain.created_at).toLocaleString()}
+                                </div>
+                            </div>
+                            <span class="domain-status status-${domain.status}">${domain.status}</span>
+                            <div class="domain-actions">
+                                <button class="btn btn-primary btn-sm" onclick="generateConfig('${escapeHtml(domain.domain)}')">
+                                    生成配置
+                                </button>
+                                <button class="btn btn-secondary btn-sm" onclick="viewConfig('${escapeHtml(domain.domain)}')">
+                                    查看
+                                </button>
+                                <button class="btn btn-danger btn-sm" onclick="deleteDomain('${escapeHtml(domain.domain)}')">
+                                    删除
+                                </button>
+                            </div>
+                        </div>
+                    `).join('');
+                } else {
+                    document.getElementById('domainList').innerHTML = `
+                        <div class="empty-state">
+                            <p>暂无域名配置</p>
+                            <p style="font-size: 0.85rem; margin-top: 0.5rem;">在上方添加第一个域名</p>
+                        </div>
+                    `;
+                }
+            } catch (e) {
+                showToast('加载域名列表失败: ' + e.message, 'error');
+            } finally {
+                document.getElementById('loading').style.display = 'none';
+            }
+        }
+
+        // 添加域名
+        document.getElementById('addDomainForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const domain = document.getElementById('domain').value.trim();
+            const nginxPort = parseInt(document.getElementById('nginxPort').value) || 80;
+            const gatewayPort = parseInt(document.getElementById('gatewayPort').value) || 9001;
+            const gatewayHost = document.getElementById('gatewayHost').value.trim();
+
+            try {
+                const res = await fetch(`${API_BASE}/api/domains`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ domain, nginx_port: nginxPort, gateway_port: gatewayPort, gateway_host: gatewayHost || null })
+                });
+
+                const json = await res.json();
+
+                if (json.success) {
+                    showToast('域名创建成功');
+                    document.getElementById('addDomainForm').reset();
+                    document.getElementById('nginxPort').value = '80';
+                    document.getElementById('gatewayPort').value = '9001';
+                    loadDomains();
+                } else {
+                    showToast(json.error || '创建失败', 'error');
+                }
+            } catch (e) {
+                showToast('创建失败: ' + e.message, 'error');
+            }
+        });
+
+        // 生成配置
+        async function generateConfig(domain) {
+            try {
+                const res = await fetch(`${API_BASE}/api/domains/${encodeURIComponent(domain)}/generate`, {
+                    method: 'POST'
+                });
+
+                const json = await res.json();
+
+                if (json.success) {
+                    showToast('配置生成成功');
+                    loadDomains();
+                } else {
+                    showToast(json.error || '生成失败', 'error');
+                }
+            } catch (e) {
+                showToast('生成失败: ' + e.message, 'error');
+            }
+        }
+
+        // 查看配置
+        let currentConfig = '';
+
+        async function viewConfig(domain) {
+            try {
+                const res = await fetch(`${API_BASE}/api/domains/${encodeURIComponent(domain)}/config`);
+                const json = await res.json();
+
+                if (json.success && json.data) {
+                    currentConfig = json.data;
+                    document.getElementById('configOutput').textContent = currentConfig;
+                    document.getElementById('configPanel').style.display = 'block';
+                } else {
+                    showToast(json.error || '获取配置失败', 'error');
+                }
+            } catch (e) {
+                showToast('获取配置失败: ' + e.message, 'error');
+            }
+        }
+
+        // 复制配置
+        document.getElementById('btnCopyConfig').addEventListener('click', () => {
+            navigator.clipboard.writeText(currentConfig).then(() => {
+                showToast('配置已复制到剪贴板');
+            }).catch(() => {
+                showToast('复制失败', 'error');
+            });
+        });
+
+        // 下载配置
+        document.getElementById('btnDownloadConfig').addEventListener('click', () => {
+            downloadFile('nginx.conf', currentConfig);
+        });
+
+        // 下载 NJS
+        document.getElementById('btnDownloadNjs').addEventListener('click', async () => {
+            try {
+                const res = await fetch(`${API_BASE}/api/njs`);
+                const njs = await res.text();
+                downloadFile('iris_main.js', njs);
+            } catch (e) {
+                showToast('下载NJS失败', 'error');
+            }
+        });
+
+        // 关闭配置面板
+        document.getElementById('btnCloseConfig').addEventListener('click', () => {
+            document.getElementById('configPanel').style.display = 'none';
+        });
+
+        // 删除域名
+        async function deleteDomain(domain) {
+            if (!confirm(`确定要删除域名 "${domain}" 吗？`)) return;
+
+            try {
+                const res = await fetch(`${API_BASE}/api/domains/${encodeURIComponent(domain)}`, {
+                    method: 'DELETE'
+                });
+
+                const json = await res.json();
+
+                if (json.success) {
+                    showToast('域名已删除');
+                    loadDomains();
+                } else {
+                    showToast(json.error || '删除失败', 'error');
+                }
+            } catch (e) {
+                showToast('删除失败: ' + e.message, 'error');
+            }
+        }
+
+        // 工具函数
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function downloadFile(filename, content) {
+            const blob = new Blob([content], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        // 初始化
+        loadDomains();
+    </script>
+</body>
+</html>

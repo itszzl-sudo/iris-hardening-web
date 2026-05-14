@@ -1,17 +1,23 @@
 //! Iris Secure Gateway - 安全网关
 
 pub mod config;
+pub mod config_poller;
 pub mod crypto;
 pub mod encrypt;
+pub mod key_manager;
 pub mod path_transform;
 pub mod proxy;
 pub mod server;
+pub mod wasm_generator;
 
 pub use config::Config;
+pub use config_poller::{ConfigPoller, ConfigTask, PollerState, TaskStatus, start_polling_loop};
 pub use encrypt::FileEncryptor;
+pub use key_manager::{KeyManager, KeyPair, SecureConfig, WasmConfig};
 pub use path_transform::PathTransformer;
 pub use proxy::{ApiProxy, ProxyResponse};
 pub use server::SecureGateway;
+pub use wasm_generator::{WasmGenerator, ConfigResponse, PublicConfig};
 
 use thiserror::Error;
 

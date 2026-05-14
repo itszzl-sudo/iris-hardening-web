@@ -5,6 +5,10 @@
 
 use wasm_bindgen::prelude::*;
 
+// Text Renderer 模块 - Canvas 文字渲染 + WebGPU 分片保护
+mod text_renderer;
+pub use text_renderer::*;
+
 #[global_allocator]
 static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
 

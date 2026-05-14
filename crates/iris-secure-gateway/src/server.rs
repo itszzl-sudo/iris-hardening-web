@@ -5,7 +5,7 @@ use std::sync::Arc;
 use tokio::sync::RwLock;
 use serde::{Deserialize, Serialize};
 use base64::Engine;
-use crate::{Config, FileEncryptor, ApiProxy, PathTransformer, Result};
+use crate::{Config, FileEncryptor, ApiProxy, PathTransformer, Result, ConfigPoller, start_polling_loop};
 
 #[derive(Debug, Deserialize)]
 struct UpdateKeyRequest {
@@ -35,6 +35,8 @@ pub struct SecureGateway {
     encryptor: Arc<RwLock<FileEncryptor>>,
     proxy: Arc<ApiProxy>,
     path_transformer: Arc<PathTransformer>,
+    config_url: Option<String>,
+    poll_interval_secs: u64,
 }
 
 #[derive(Debug)]
@@ -75,12 +77,16 @@ impl SecureGateway {
         let key = config.load_key()?;
         let encryptor = FileEncryptor::new(&key)?;
         let path_transformer = PathTransformer::new(config.file_mappings.clone());
+        let config_url = config.config_server_url.clone();
+        let poll_interval_secs = config.poll_interval_secs;
 
         Ok(Self {
             config: Arc::new(config),
             encryptor: Arc::new(RwLock::new(encryptor)),
             proxy: Arc::new(ApiProxy::new()?),
             path_transformer: Arc::new(path_transformer),
+            config_url,
+            poll_interval_secs,
         })
     }
 
@@ -90,6 +96,20 @@ impl SecureGateway {
         let proxy = self.proxy.clone();
         let path_transformer = self.path_transformer.clone();
         let internal_token = Arc::new(self.config.internal_token.clone());
+
+        // Start config polling if configured
+        if let Some(ref config_url) = self.config.config_server_url {
+            let poller = Arc::new(ConfigPoller::new(config_url.clone()));
+            let poll_interval = self.poll_interval_secs;
+
+            tokio::spawn(async move {
+                start_polling_loop(poller, poll_interval).await;
+            });
+
+            tracing::info!("Config polling enabled (interval: {}s)", poll_interval);
+        } else {
+            tracing::info!("Config polling disabled");
+        }
 
         let update_key_route = warp::path("internal")
             .and(warp::path("update-key"))

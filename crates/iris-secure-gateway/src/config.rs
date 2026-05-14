@@ -18,10 +18,18 @@ pub struct Config {
     /// Must match the token configured in iris-wasm-gateway.
     #[serde(default = "default_internal_token")]
     pub internal_token: String,
+    /// 配置服务器 URL - 启用后自动从 iris-secure-config 轮询任务
+    #[serde(default)]
+    pub config_server_url: Option<String>,
+    /// 轮询配置服务器的间隔（秒）
+    #[serde(default = "default_poll_interval")]
+    pub poll_interval_secs: u64,
     /// Pre-compiled regex patterns (not serialized).
     #[serde(skip)]
     pub compiled_routes: Option<Arc<Vec<CompiledRoute>>>,
 }
+
+fn default_poll_interval() -> u64 { 60 }
 
 /// A route with its regex pre-compiled.
 #[derive(Debug)]
@@ -162,6 +170,8 @@ impl Default for Config {
             file_mappings: HashMap::new(),
             api_routes: Vec::new(),
             internal_token: default_internal_token(),
+            config_server_url: None,
+            poll_interval_secs: 60,
             compiled_routes: None,
         }
     }

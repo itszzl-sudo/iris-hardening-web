@@ -76,6 +76,25 @@
             <button id="btn-check-watermark" disabled>Check Watermark</button>
             <button id="btn-reset">Reset</button>
         </div>
+        <!-- 文字渲染控制区 -->
+        <div class="controls" style="margin-top: 0.5rem;">
+            <input type="text" id="text-input" placeholder="输入要保护的文字" style="padding: 0.5rem; border-radius: 6px; border: 1px solid rgba(255,255,255,0.3); background: rgba(255,255,255,0.1); color: white; width: 200px;">
+            <button id="btn-render-text" disabled>Render Text (Protected)</button>
+            <button id="btn-render-multiline" disabled>Multi-Line</button>
+        </div>
+        <!-- 高级选项 -->
+        <div class="controls" style="margin-top: 0.25rem; font-size: 0.85rem;">
+            <label style="display: flex; align-items: center; gap: 0.5rem; opacity: 0.8;">
+                <input type="checkbox" id="chk-ocr" checked> OCR 防护
+            </label>
+            <label style="display: flex; align-items: center; gap: 0.5rem; opacity: 0.8;">
+                <input type="checkbox" id="chk-decoration" checked> 装饰字形
+            </label>
+            <label style="display: flex; align-items: center; gap: 0.5rem; opacity: 0.8; margin-left: 1rem;">
+                字体大小:
+                <input type="number" id="input-fontsize" value="32" min="12" max="72" style="width: 60px; padding: 0.25rem; border-radius: 4px; border: 1px solid rgba(255,255,255,0.3); background: rgba(255,255,255,0.1); color: white;">
+            </label>
+        </div>
         <div id="watermark-result"></div>
         <div class="canvas-container">
             <canvas id="canvas" width="800" height="600"></canvas>
@@ -512,6 +531,861 @@
         }
 
         // =====================================================
+        // 字形装饰系统 - 脑袋、手臂、腿、尾巴
+        // =====================================================
+        class DecorativeGlyph {
+            constructor() {
+                this.glyphs = [];           // 当前字符列表
+                this.fontSize = 32;
+                this.fontFamily = 'Segoe UI';
+                this.fontColor = '#ffffff';
+                this.interval = null;
+            }
+
+            /**
+             * 设置字体样式
+             */
+            setFont(fontSize, fontFamily, fontColor) {
+                this.fontSize = fontSize;
+                this.fontFamily = fontFamily;
+                this.fontColor = fontColor;
+            }
+
+            /**
+             * 设置字符内容
+             */
+            setGlyphs(text) {
+                this.glyphs = text.split('').map((char, index) => ({
+                    char,
+                    x: 0,
+                    y: 0,
+                    hasHead: false,
+                    headOffset: { x: 0, y: 0 },
+                    arms: [],
+                    legs: [],
+                    tail: null
+                }));
+            }
+
+            /**
+             * 计算字符位置
+             */
+            calculatePositions(centerX, centerY) {
+                const spacing = this.fontSize * 0.8;
+                const totalWidth = this.glyphs.length * spacing;
+                const startX = centerX - totalWidth / 2;
+
+                this.glyphs.forEach((glyph, index) => {
+                    glyph.x = startX + index * spacing + spacing / 2;
+                    glyph.y = centerY;
+                });
+            }
+
+            /**
+             * 生成随机装饰
+             */
+            generateRandomDecorations() {
+                this.glyphs.forEach((glyph, index) => {
+                    // 清空上次的装饰
+                    glyph.hasHead = false;
+                    glyph.headOffset = { x: 0, y: 0 };
+                    glyph.arms = [];
+                    glyph.legs = [];
+                    glyph.tail = null;
+
+                    // 随机概率决定是否添加装饰
+                    const rand = Math.random();
+
+                    // 脑袋 (20%概率)
+                    if (Math.random() < 0.2) {
+                        glyph.hasHead = true;
+                        glyph.headOffset = {
+                            x: (Math.random() - 0.5) * this.fontSize * 0.8,
+                            y: -this.fontSize * (0.8 + Math.random() * 0.5)
+                        };
+                    }
+
+                    // 手臂 (40%概率，一对)
+                    if (Math.random() < 0.4) {
+                        const armLength = this.fontSize * (0.3 + Math.random() * 0.4);
+                        const angle1 = Math.random() * Math.PI - Math.PI / 2;
+                        const angle2 = angle1 + Math.PI; // 相反方向
+
+                        glyph.arms = [
+                            { length: armLength, angle: angle1 },
+                            { length: armLength, angle: angle2 }
+                        ];
+                    }
+
+                    // 腿 (30%概率，1-4条)
+                    if (Math.random() < 0.3) {
+                        const legCount = Math.floor(Math.random() * 4) + 1;
+                        const legLength = this.fontSize * (0.4 + Math.random() * 0.3);
+
+                        for (let i = 0; i < legCount; i++) {
+                            const yOffset = i * this.fontSize * 0.15;
+                            glyph.legs.push({
+                                length: legLength,
+                                yOffset,
+                                curve: Math.random() * 10 - 5
+                            });
+                        }
+                    }
+
+                    // 尾巴 (25%概率)
+                    if (Math.random() < 0.25) {
+                        const tailLength = this.fontSize * (0.5 + Math.random() * 0.8);
+                        glyph.tail = {
+                            length: tailLength,
+                            angle: Math.random() * Math.PI * 2,
+                            curvePoints: this.generateCurvePoints()
+                        };
+                    }
+                });
+            }
+
+            /**
+             * 生成曲线上的点
+             */
+            generateCurvePoints() {
+                const points = [];
+                const segments = 5 + Math.floor(Math.random() * 5);
+                for (let i = 0; i < segments; i++) {
+                    points.push({
+                        dx: (Math.random() - 0.5) * this.fontSize * 0.3,
+                        dy: (Math.random() - 0.5) * this.fontSize * 0.3
+                    });
+                }
+                return points;
+            }
+
+            /**
+             * 绘制装饰
+             */
+            draw(ctx) {
+                const lineWidth = Math.max(1, this.fontSize / 20);
+
+                this.glyphs.forEach(glyph => {
+                    const x = glyph.x;
+                    const y = glyph.y;
+
+                    // 绘制尾巴 (最细的曲线)
+                    if (glyph.tail) {
+                        ctx.save();
+                        ctx.strokeStyle = this.fontColor;
+                        ctx.lineWidth = Math.max(1, lineWidth * 0.5);
+                        ctx.lineCap = 'round';
+                        ctx.beginPath();
+                        ctx.moveTo(x, y);
+
+                        let currentX = x;
+                        let currentY = y;
+                        let angle = glyph.tail.angle;
+
+                        glyph.tail.curvePoints.forEach((point, i) => {
+                            currentX += Math.cos(angle) * (this.fontSize * 0.2) + point.dx;
+                            currentY += Math.sin(angle) * (this.fontSize * 0.2) + point.dy;
+                            ctx.lineTo(currentX, currentY);
+
+                            // 尾巴越来越细
+                            ctx.lineWidth = Math.max(0.5, lineWidth * 0.5 * (1 - i / glyph.tail.curvePoints.length));
+                        });
+
+                        ctx.stroke();
+                        ctx.restore();
+                    }
+
+                    // 绘制手臂 (折线加五角星)
+                    glyph.arms.forEach(arm => {
+                        ctx.save();
+                        ctx.strokeStyle = this.fontColor;
+                        ctx.lineWidth = lineWidth;
+                        ctx.lineCap = 'round';
+                        ctx.lineJoin = 'round';
+
+                        const endX = x + Math.cos(arm.angle) * arm.length;
+                        const endY = y + Math.sin(arm.angle) * arm.length;
+
+                        // 折线 (两段)
+                        const midX = x + Math.cos(arm.angle) * arm.length * 0.6;
+                        const midY = y + Math.sin(arm.angle) * arm.length * 0.6;
+                        const bendX = midX + (Math.random() - 0.5) * arm.length * 0.2;
+                        const bendY = midY + (Math.random() - 0.5) * arm.length * 0.2;
+
+                        ctx.beginPath();
+                        ctx.moveTo(x, y);
+                        ctx.lineTo(bendX, bendY);
+                        ctx.lineTo(endX, endY);
+                        ctx.stroke();
+
+                        // 五角星
+                        this.drawStar(ctx, endX, endY, lineWidth * 3, this.fontColor);
+
+                        ctx.restore();
+                    });
+
+                    // 绘制腿 (折线加点)
+                    glyph.legs.forEach(leg => {
+                        ctx.save();
+                        ctx.strokeStyle = this.fontColor;
+                        ctx.lineWidth = lineWidth;
+                        ctx.lineCap = 'round';
+
+                        const legY = y + leg.yOffset;
+                        const midX = x + leg.curve * 0.5;
+                        const endX = x + leg.curve;
+
+                        ctx.beginPath();
+                        ctx.moveTo(x, legY);
+                        ctx.quadraticCurveTo(midX, legY + leg.length * 0.5, endX, legY + leg.length);
+                        ctx.stroke();
+
+                        // 端点
+                        ctx.fillStyle = this.fontColor;
+                        ctx.beginPath();
+                        ctx.arc(endX, legY + leg.length, lineWidth * 1.5, 0, Math.PI * 2);
+                        ctx.fill();
+
+                        ctx.restore();
+                    });
+
+                    // 绘制脑袋 (小点连细线)
+                    if (glyph.hasHead) {
+                        const headX = x + glyph.headOffset.x;
+                        const headY = y + glyph.headOffset.y;
+                        const headRadius = this.fontSize * 0.1;
+
+                        ctx.save();
+                        // 细线连接
+                        ctx.strokeStyle = this.fontColor;
+                        ctx.lineWidth = Math.max(0.5, lineWidth * 0.3);
+                        ctx.beginPath();
+                        ctx.moveTo(x, y - this.fontSize * 0.3);
+                        ctx.lineTo(headX, headY);
+                        ctx.stroke();
+
+                        // 脑袋圆
+                        ctx.fillStyle = this.fontColor;
+                        ctx.beginPath();
+                        ctx.arc(headX, headY, headRadius, 0, Math.PI * 2);
+                        ctx.fill();
+
+                        // 两个小眼睛 (相反颜色)
+                        const eyeRadius = headRadius * 0.4;
+                        const eyeOffset = headRadius * 0.5;
+                        const bgColor = this.invertColor(this.fontColor);
+
+                        ctx.fillStyle = bgColor;
+                        ctx.beginPath();
+                        ctx.arc(headX - eyeOffset, headY, eyeRadius, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.beginPath();
+                        ctx.arc(headX + eyeOffset, headY, eyeRadius, 0, Math.PI * 2);
+                        ctx.fill();
+
+                        ctx.restore();
+                    }
+                });
+            }
+
+            /**
+             * 绘制五角星
+             */
+            drawStar(ctx, cx, cy, radius, color) {
+                const spikes = 5;
+                const outerRadius = radius;
+                const innerRadius = radius * 0.4;
+                let rot = Math.PI / 2 * 3;
+                const step = Math.PI / spikes;
+
+                ctx.fillStyle = color;
+                ctx.beginPath();
+                ctx.moveTo(cx, cy - outerRadius);
+
+                for (let i = 0; i < spikes; i++) {
+                    let x = cx + Math.cos(rot) * outerRadius;
+                    let y = cy + Math.sin(rot) * outerRadius;
+                    ctx.lineTo(x, y);
+                    rot += step;
+
+                    x = cx + Math.cos(rot) * innerRadius;
+                    y = cy + Math.sin(rot) * innerRadius;
+                    ctx.lineTo(x, y);
+                    rot += step;
+                }
+
+                ctx.lineTo(cx, cy - outerRadius);
+                ctx.closePath();
+                ctx.fill();
+            }
+
+            /**
+             * 反转颜色
+             */
+            invertColor(color) {
+                if (color.startsWith('#')) {
+                    const r = parseInt(color.slice(1, 3), 16);
+                    const g = parseInt(color.slice(3, 5), 16);
+                    const b = parseInt(color.slice(5, 7), 16);
+                    return `rgb(${255 - r}, ${255 - g}, ${255 - b})`;
+                }
+                return '#000000';
+            }
+
+            /**
+             * 启动自动更新
+             */
+            startAutoUpdate(intervalMs = 10000, callback) {
+                if (this.interval) {
+                    clearInterval(this.interval);
+                }
+                this.interval = setInterval(() => {
+                    this.generateRandomDecorations();
+                    if (callback) callback();
+                }, intervalMs);
+            }
+
+            /**
+             * 停止自动更新
+             */
+            stopAutoUpdate() {
+                if (this.interval) {
+                    clearInterval(this.interval);
+                    this.interval = null;
+                }
+            }
+        }
+
+        // =====================================================
+        // WebGPU Text Renderer - 文字保护渲染器
+        // =====================================================
+        class WebGPUTextRenderer {
+            constructor(canvas, engine) {
+                this.canvas = canvas;
+                this.engine = engine;
+                this.ctx = null;           // Canvas 2D fallback
+                this.device = null;        // WebGPU device
+                this.gpuContext = null;    // WebGPU canvas context
+                this.useWebGPU = false;
+
+                this.canvasWidth = canvas.width;
+                this.canvasHeight = canvas.height;
+                this.tilesX = 4;
+                this.tilesY = 3;
+
+                this.currentTileIndex = 0;
+                this.renderComplete = false;
+                this.renderedTiles = new Set();
+
+                this.watermarkText = 'protected.text.irisverse.org';
+                this.sessionId = '';
+
+                // 文字配置
+                this.fontSize = 32;
+                this.fontFamily = '"Segoe UI", Arial, sans-serif';
+                this.fontColor = '#ffffff';
+
+                // 扩展配置
+                this.antiOcrEnabled = true;  // OCR对抗
+                this.multiLineEnabled = false;
+                this.fontData = null;        // 自定义字体数据
+            }
+
+            async init() {
+                // Try WebGPU first
+                if (navigator.gpu) {
+                    try {
+                        const adapter = await navigator.gpu.requestAdapter();
+                        if (adapter) {
+                            this.device = await adapter.requestDevice();
+                            this.gpuContext = this.canvas.getContext('webgpu');
+                            if (this.gpuContext) {
+                                const format = navigator.gpu.getPreferredCanvasFormat();
+                                this.gpuContext.configure({
+                                    device: this.device,
+                                    format: format,
+                                    alphaMode: 'premultiplied',
+                                });
+                                this.canvasFormat = format;
+                                this.useWebGPU = true;
+                                console.log('WebGPU initialized for text rendering');
+                            }
+                        }
+                    } catch (e) {
+                        console.warn('WebGPU not available, using Canvas 2D fallback:', e);
+                    }
+                }
+
+                if (!this.useWebGPU) {
+                    this.ctx = this.canvas.getContext('2d');
+                    console.log('Using Canvas 2D fallback for text rendering');
+                }
+
+                // 设置会话ID
+                this.sessionId = `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
+                // 装饰字形系统 - 添加脑袋、手臂、腿、尾巴
+                this.decorativeGlyph = new DecorativeGlyph();
+                this.decorationEnabled = true;
+                this.currentText = '';
+            }
+
+            /**
+             * 渲染受保护的文字
+             * @param {string} text - 要渲染的文字
+             * @param {Object} options - 配置选项 { fontSize, fontFamily, color }
+             */
+            async renderText(text, options = {}) {
+                const fontSize = options.fontSize || this.fontSize;
+                const fontFamily = options.fontFamily || this.fontFamily;
+                const color = options.color || this.fontColor;
+
+                console.log(`Rendering protected text: "${text}" (${text.length} chars)`);
+
+                // 保存当前文本用于装饰更新
+                this.currentText = text;
+
+                // 生成会话ID
+                this.sessionId = `text-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
+                // 1. 创建离屏 Canvas 进行文字栅格化
+                const offscreen = document.createElement('canvas');
+                offscreen.width = this.canvasWidth;
+                offscreen.height = this.canvasHeight;
+                const offCtx = offscreen.getContext('2d');
+
+                // 清空背景 (透明)
+                offCtx.clearRect(0, 0, this.canvasWidth, this.canvasHeight);
+
+                // 绘制文字
+                offCtx.font = `bold ${fontSize}px ${fontFamily}`;
+                offCtx.fillStyle = color;
+                offCtx.textAlign = 'center';
+                offCtx.textBaseline = 'middle';
+
+                // 居中文字
+                const centerX = this.canvasWidth / 2;
+                const centerY = this.canvasHeight / 2;
+                offCtx.fillText(text, centerX, centerY);
+
+                // 2. 获取像素数据
+                const imageData = offCtx.getImageData(0, 0, this.canvasWidth, this.canvasHeight);
+                const pixels = new Uint8Array(imageData.data);
+
+                // 3. 获取分片渲染顺序 (从 WASM)
+                const renderOrder = this.engine.get_render_order();
+                console.log(`Render order: ${renderOrder.length} tiles`);
+
+                // 4. 渐进式分片渲染
+                await this.renderFragmentsWithDelay(pixels, renderOrder, options);
+
+                return true;
+            }
+
+            /**
+             * 使用延迟渐进式渲染分片
+             */
+            async renderFragmentsWithDelay(pixels, renderOrder, options) {
+                const tileW = this.canvasWidth / this.tilesX;
+                const tileH = this.canvasHeight / this.tilesY;
+
+                for (let i = 0; i < renderOrder.length; i++) {
+                    const tileIndex = renderOrder[i];
+
+                    // 计算瓦片位置
+                    const tx = (tileIndex % this.tilesX) * tileW;
+                    const ty = Math.floor(tileIndex / this.tilesX) * tileH;
+
+                    // 提取瓦片像素
+                    const tilePixels = this.extractTilePixels(pixels, tileIndex, tileW, tileH);
+
+                    // 应用噪声 (模拟 B 通道噪声)
+                    this.applyTileNoise(tilePixels, tileIndex);
+
+                    // 渲染到主 Canvas
+                    if (this.useWebGPU) {
+                        await this.renderTileWebGPU(tilePixels, tileIndex, tileW, tileH);
+                    } else {
+                        this.renderTileCanvas2D(tilePixels, tileIndex, tx, ty, tileW, tileH);
+                    }
+
+                    // 延迟 (30-80ms 随机)
+                    const delay = 30 + Math.random() * 50;
+                    await new Promise(resolve => setTimeout(resolve, delay));
+
+                    this.currentTileIndex = i + 1;
+                    this.renderedTiles.add(tileIndex);
+                }
+
+                this.renderComplete = true;
+                console.log('Text rendering complete');
+            }
+
+            /**
+             * 提取瓦片像素
+             */
+            extractTilePixels(pixels, tileIndex, tileW, tileH) {
+                const srcX = (tileIndex % this.tilesX) * tileW;
+                const srcY = Math.floor(tileIndex / this.tilesX) * tileH;
+
+                const tilePixels = new Uint8Array(tileW * tileH * 4);
+
+                for (let y = 0; y < tileH; y++) {
+                    for (let x = 0; x < tileW; x++) {
+                        const srcIdx = ((srcY + y) * this.canvasWidth + (srcX + x)) * 4;
+                        const dstIdx = (y * tileW + x) * 4;
+
+                        if (srcIdx + 3 < pixels.length) {
+                            tilePixels[dstIdx] = pixels[srcIdx];       // R
+                            tilePixels[dstIdx + 1] = pixels[srcIdx + 1]; // G
+                            tilePixels[dstIdx + 2] = pixels[srcIdx + 2]; // B
+                            tilePixels[dstIdx + 3] = pixels[srcIdx + 3]; // A
+                        }
+                    }
+                }
+
+                return tilePixels;
+            }
+
+            /**
+             * 应用瓦片噪声 (B通道LSB编码)
+             */
+            applyTileNoise(tilePixels, tileIndex) {
+                // 基于 sessionId 和 tileIndex 生成确定性噪声
+                let hash = 0;
+                for (let i = 0; i < this.sessionId.length; i++) {
+                    hash = ((hash << 5) - hash + this.sessionId.charCodeAt(i)) | 0;
+                }
+                hash = (hash + tileIndex * 7919) >>> 0;
+
+                // 对前几个像素的 B 通道编码瓦片索引
+                const encodeInfo = [
+                    tileIndex & 0xFF,
+                    (tileIndex >> 8) & 0xFF,
+                    hash & 0xFF,
+                    (hash >> 8) & 0xFF,
+                ];
+
+                for (let i = 0; i < 4; i++) {
+                    const pi = i * 4 + 2; // B channel
+                    if (pi + 2 < tilePixels.length) {
+                        // 清除 B 通道低2位，然后编码
+                        tilePixels[pi] = (tilePixels[pi] & 0xFC) | (encodeInfo[i] & 0x03);
+                    }
+                }
+
+                // 对其余像素添加随机噪声
+                for (let i = 4; i < tilePixels.length / 4; i++) {
+                    hash = (hash * 1103515245 + 12345) >>> 0;
+                    const noise = hash & 0x03;
+
+                    const pi = i * 4 + 2; // B channel
+                    tilePixels[pi] = (tilePixels[pi] & 0xFC) | noise;
+                }
+
+                // 应用 OCR 对抗措施
+                if (this.antiOcrEnabled) {
+                    this.applyOcrCountermeasures(tilePixels, tileIndex, tileW, tileH);
+                }
+            }
+
+            /**
+             * OCR 对抗措施 - 添加视觉干扰
+             */
+            applyOcrCountermeasures(tilePixels, tileIndex, width, height) {
+                if (!this.antiOcrEnabled) return;
+
+                // 1. 添加微弱的网格干扰线
+                const gridSize = 8; // 每 8 像素一条干扰线
+                for (let i = 0; i < tilePixels.length; i += 4) {
+                    const pixelIndex = Math.floor(i / 4);
+                    const x = pixelIndex % width;
+                    const y = Math.floor(pixelIndex / width);
+
+                    // 垂直和水平干扰线
+                    if (x % gridSize === 0 || y % gridSize === 0) {
+                        // 添加微弱的灰色像素 (几乎不可见但影响 OCR)
+                        const alpha = tilePixels[i + 3];
+                        if (alpha > 0) {
+                            const noise = (tileIndex * 17 + x + y) % 8;
+                            tilePixels[i] = Math.min(255, tilePixels[i] + noise);
+                            tilePixels[i + 1] = Math.min(255, tilePixels[i + 1] + noise);
+                        }
+                    }
+                }
+
+                // 2. 添加对角线干扰
+                for (let i = 0; i < tilePixels.length; i += 4) {
+                    const pixelIndex = Math.floor(i / 4);
+                    const x = pixelIndex % width;
+                    const y = Math.floor(pixelIndex / width);
+
+                    // 轻微的倾斜干扰
+                    if ((x + y) % 13 === 0) {
+                        const alpha = tilePixels[i + 3];
+                        if (alpha > 0) {
+                            tilePixels[i] = Math.max(0, tilePixels[i] - 2);
+                        }
+                    }
+                }
+
+                // 3. 添加随机噪点 (非常稀疏)
+                const seed = tileIndex * 12345;
+                for (let i = 0; i < 20; i++) {
+                    const px = (seed * (i + 1) * 7) % width;
+                    const py = (seed * (i + 1) * 11) % height;
+                    const idx = (py * width + px) * 4;
+
+                    if (idx + 3 < tilePixels.length) {
+                        // 添加一个微小的亮点
+                        if (tilePixels[idx + 3] > 0) {
+                            tilePixels[idx] = Math.min(255, tilePixels[idx] + 5);
+                            tilePixels[idx + 1] = Math.min(255, tilePixels[idx + 1] + 5);
+                            tilePixels[idx + 2] = Math.min(255, tilePixels[idx + 2] + 5);
+                        }
+                    }
+                }
+            }
+
+            /**
+             * 渲染多行文字
+             */
+            async renderMultiLineText(text, options = {}) {
+                const lines = text.split('\n');
+                const lineHeight = options.lineHeight || this.fontSize * 1.4;
+
+                console.log(`Rendering multi-line text: ${lines.length} lines`);
+
+                // 创建离屏 Canvas
+                const offscreen = document.createElement('canvas');
+                offscreen.width = this.canvasWidth;
+                offscreen.height = this.canvasHeight;
+                const offCtx = offscreen.getContext('2d');
+
+                offCtx.clearRect(0, 0, this.canvasWidth, this.canvasHeight);
+
+                // 逐行绘制文字
+                const fontSize = options.fontSize || this.fontSize;
+                const fontFamily = options.fontFamily || this.fontFamily;
+                const color = options.color || this.fontColor;
+
+                offCtx.font = `bold ${fontSize}px ${fontFamily}`;
+                offCtx.fillStyle = color;
+                offCtx.textAlign = 'center';
+                offCtx.textBaseline = 'middle';
+
+                // 计算起始位置 (垂直居中)
+                const totalHeight = lines.length * lineHeight;
+                let startY = (this.canvasHeight - totalHeight) / 2 + lineHeight / 2;
+
+                for (let i = 0; i < lines.length; i++) {
+                    const centerX = this.canvasWidth / 2;
+                    offCtx.fillText(lines[i], centerX, startY + i * lineHeight);
+                }
+
+                // 获取像素数据并渲染
+                const imageData = offCtx.getImageData(0, 0, this.canvasWidth, this.canvasHeight);
+                const pixels = new Uint8Array(imageData.data);
+
+                const renderOrder = this.engine.get_render_order();
+                await this.renderFragmentsWithDelay(pixels, renderOrder, options);
+
+                return true;
+            }
+
+            /**
+             * 设置自定义字体数据
+             */
+            async setFontData(fontUrl) {
+                try {
+                    const response = await fetch(fontUrl);
+                    this.fontData = await response.arrayBuffer();
+                    console.log('Custom font loaded:', fontUrl);
+                    return true;
+                } catch (e) {
+                    console.error('Failed to load custom font:', e);
+                    return false;
+                }
+            }
+
+            /**
+             * Canvas 2D 渲染瓦片
+             */
+            renderTileCanvas2D(tilePixels, tileIndex, x, y, w, h) {
+                if (!this.ctx) {
+                    this.ctx = this.canvas.getContext('2d');
+                }
+
+                // 创建临时 Canvas 用于瓦片
+                const tileCanvas = document.createElement('canvas');
+                tileCanvas.width = w;
+                tileCanvas.height = h;
+                const tileCtx = tileCanvas.getContext('2d');
+
+                const imageData = new ImageData(
+                    new Uint8ClampedArray(tilePixels),
+                    w, h
+                );
+                tileCtx.putImageData(imageData, 0, 0);
+
+                // 绘制到主 Canvas (应用微小平移以增加保护效果)
+                const offsetX = ((tileIndex * 7) % 3) - 1;
+                const offsetY = ((tileIndex * 11) % 3) - 1;
+
+                this.ctx.drawImage(tileCanvas, x + offsetX, y + offsetY);
+            }
+
+            /**
+             * WebGPU 渲染瓦片
+             */
+            async renderTileWebGPU(tilePixels, tileIndex, w, h) {
+                if (!this.gpuContext) return;
+
+                try {
+                    // 创建 GPU 纹理
+                    const texture = this.device.createTexture({
+                        size: [w, h],
+                        format: this.canvasFormat,
+                        usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST,
+                    });
+
+                    // 上传像素数据
+                    this.device.queue.writeTexture(
+                        { texture },
+                        tilePixels,
+                        { bytesPerRow: w * 4, rowsPerImage: h },
+                        [w, h]
+                    );
+
+                    // 创建命令编码器
+                    const commandEncoder = this.device.createCommandEncoder();
+
+                    // 获取当前纹理
+                    const currentTexture = this.gpuContext.getCurrentTexture();
+                    const textureView = currentTexture.createView();
+
+                    // 计算瓦片在画布上的位置
+                    const tx = (tileIndex % this.tilesX) * w;
+                    const ty = Math.floor(tileIndex / this.tilesX) * h;
+
+                    // 渲染通道 (简化版本 - 实际需要完整的着色器)
+                    const renderPass = commandEncoder.beginRenderPass({
+                        colorAttachments: [{
+                            view: textureView,
+                            loadOp: 'load',
+                            storeOp: 'store',
+                        }],
+                    });
+
+                    renderPass.end();
+
+                    // 提交命令
+                    this.device.queue.submit([commandEncoder.finish()]);
+
+                } catch (e) {
+                    console.warn('WebGPU tile render failed, falling back to Canvas 2D:', e);
+                    // 回退到 Canvas 2D
+                    const tileW = this.canvasWidth / this.tilesX;
+                    const tileH = this.canvasHeight / this.tilesY;
+                    this.renderTileCanvas2D(tilePixels, tileIndex,
+                        (tileIndex % this.tilesX) * tileW,
+                        Math.floor(tileIndex / this.tilesX) * tileH,
+                        tileW, tileH);
+                }
+            }
+
+            /**
+             * 获取渲染进度
+             */
+            getProgress() {
+                if (this.renderComplete) return 1.0;
+                const total = this.tilesX * this.tilesY;
+                return this.renderedTiles.size / total;
+            }
+
+            /**
+             * 是否渲染完成
+             */
+            isComplete() {
+                return this.renderComplete;
+            }
+
+            /**
+             * 重置渲染状态
+             */
+            reset() {
+                this.currentTileIndex = 0;
+                this.renderComplete = false;
+                this.renderedTiles.clear();
+
+                const ctx = this.canvas.getContext('2d');
+                if (ctx) ctx.clearRect(0, 0, this.canvasWidth, this.canvasHeight);
+            }
+
+            /**
+             * 更新装饰字形 - 在渲染完成后调用
+             */
+            updateDecorations(text, options = {}) {
+                if (!this.decorationEnabled) return;
+
+                const ctx = this.ctx || this.canvas.getContext('2d');
+                if (!ctx) return;
+
+                const fontSize = options.fontSize || this.fontSize;
+                const fontFamily = options.fontFamily || this.fontFamily;
+                const fontColor = options.color || this.fontColor;
+
+                // 设置装饰字形的字体样式
+                this.decorativeGlyph.setFont(fontSize, fontFamily, fontColor);
+                this.decorativeGlyph.setGlyphs(text);
+
+                // 计算文字位置
+                const centerX = this.canvasWidth / 2;
+                const centerY = this.canvasHeight / 2;
+                this.decorativeGlyph.calculatePositions(centerX, centerY);
+
+                // 生成随机装饰
+                this.decorativeGlyph.generateRandomDecorations();
+
+                // 绘制装饰
+                this.decorativeGlyph.draw(ctx);
+            }
+
+            /**
+             * 启动装饰自动更新 (每10秒刷新)
+             */
+            startDecorationAutoUpdate(intervalMs = 10000) {
+                this.stopDecorationAutoUpdate();
+
+                const text = this.currentText || '';
+                const options = {
+                    fontSize: this.fontSize,
+                    fontFamily: this.fontFamily,
+                    color: this.fontColor
+                };
+
+                this.decorationTimer = setInterval(() => {
+                    if (text) {
+                        this.updateDecorations(text, options);
+                    }
+                }, intervalMs);
+
+                console.log(`Decoration auto-update started (interval: ${intervalMs}ms)`);
+            }
+
+            /**
+             * 停止装饰自动更新
+             */
+            stopDecorationAutoUpdate() {
+                if (this.decorationTimer) {
+                    clearInterval(this.decorationTimer);
+                    this.decorationTimer = null;
+                }
+                this.decorativeGlyph.stopAutoUpdate();
+            }
+        }
+
+        // =====================================================
         // WebGPU Monitor Panel
         // =====================================================
         class WebGPUMonitor {
@@ -689,6 +1563,142 @@
                     btnCheck.disabled = true;
                     statusEl.textContent = 'Reset. Load an image to start.';
                     statusEl.style.background = 'rgba(255,255,255,0.15)';
+                });
+
+                // =====================================================
+                // 文字渲染功能
+                // =====================================================
+                const textInput = document.getElementById('text-input');
+                const btnRenderText = document.getElementById('btn-render-text');
+                const btnRenderMultiLine = document.getElementById('btn-render-multiline');
+                const chkOcr = document.getElementById('chk-ocr');
+                const inputFontsize = document.getElementById('input-fontsize');
+
+                // 初始化文字渲染器
+                let textRenderer = null;
+
+                async function initTextRenderer() {
+                    textRenderer = new WebGPUTextRenderer(canvas, engine);
+                    await textRenderer.init();
+                    btnRenderText.disabled = false;
+                    btnRenderMultiLine.disabled = false;
+                    console.log('Text renderer initialized');
+                }
+
+                // 立即初始化文字渲染器
+                initTextRenderer();
+
+                // 获取当前选项
+                function getTextOptions() {
+                    return {
+                        fontSize: parseInt(inputFontsize.value) || 32,
+                        fontFamily: '"Segoe UI", Arial, sans-serif',
+                        color: '#ffffff'
+                    };
+                }
+
+                const chkDecoration = document.getElementById('chk-decoration');
+                chkDecoration.addEventListener('change', (e) => {
+                    if (textRenderer) {
+                        textRenderer.decorationEnabled = e.target.checked;
+                        if (e.target.checked) {
+                            textRenderer.startDecorationAutoUpdate(10000);
+                        } else {
+                            textRenderer.stopDecorationAutoUpdate();
+                        }
+                    }
+                });
+
+                btnRenderText.addEventListener('click', async () => {
+                    const text = textInput.value.trim();
+                    if (!text) {
+                        statusEl.textContent = 'Please enter text to render';
+                        return;
+                    }
+
+                    btnRenderText.disabled = true;
+                    btnRenderMultiLine.disabled = true;
+                    btnRender.disabled = true;
+                    statusEl.textContent = 'Rendering protected text...';
+                    statusEl.classList.add('loading');
+
+                    try {
+                        const options = getTextOptions();
+                        textRenderer.antiOcrEnabled = chkOcr.checked;
+                        textRenderer.decorationEnabled = chkDecoration.checked;
+
+                        await textRenderer.renderText(text, options);
+
+                        // 添加装饰字形
+                        if (chkDecoration.checked) {
+                            textRenderer.updateDecorations(text, options);
+                            textRenderer.startDecorationAutoUpdate(10000);
+                        }
+
+                        statusEl.textContent = `Protected text rendered: "${text}" (${text.length} chars, OCR: ${chkOcr.checked ? 'ON' : 'OFF'})`;
+                        statusEl.style.background = 'rgba(76, 175, 80, 0.3)';
+                        statusEl.classList.remove('loading');
+
+                    } catch (error) {
+                        console.error('Text rendering failed:', error);
+                        statusEl.textContent = 'Text rendering failed: ' + error.message;
+                        statusEl.style.background = 'rgba(244, 67, 54, 0.3)';
+                        statusEl.classList.remove('loading');
+                    }
+
+                    btnRenderText.disabled = false;
+                    btnRenderMultiLine.disabled = false;
+                    btnRender.disabled = false;
+                });
+
+                // 多行文字渲染
+                btnRenderMultiLine.addEventListener('click', async () => {
+                    const text = textInput.value.trim();
+                    if (!text) {
+                        statusEl.textContent = 'Please enter text to render';
+                        return;
+                    }
+
+                    btnRenderText.disabled = true;
+                    btnRenderMultiLine.disabled = true;
+                    btnRender.disabled = true;
+                    statusEl.textContent = 'Rendering multi-line protected text...';
+                    statusEl.classList.add('loading');
+
+                    try {
+                        const options = getTextOptions();
+                        textRenderer.antiOcrEnabled = chkOcr.checked;
+                        textRenderer.decorationEnabled = chkDecoration.checked;
+
+                        await textRenderer.renderMultiLineText(text, options);
+
+                        // 添加装饰字形
+                        if (chkDecoration.checked) {
+                            textRenderer.updateDecorations(text.replace(/\n/g, ''), options);
+                            textRenderer.startDecorationAutoUpdate(10000);
+                        }
+
+                        statusEl.textContent = `Multi-line text rendered (${text.split('\n').length} lines)`;
+                        statusEl.style.background = 'rgba(76, 175, 80, 0.3)';
+                        statusEl.classList.remove('loading');
+
+                    } catch (error) {
+                        console.error('Multi-line rendering failed:', error);
+                        statusEl.textContent = 'Rendering failed: ' + error.message;
+                        statusEl.style.background = 'rgba(244, 67, 54, 0.3)';
+                        statusEl.classList.remove('loading');
+                    }
+
+                    btnRenderText.disabled = false;
+                    btnRenderMultiLine.disabled = false;
+                    btnRender.disabled = false;
+                });
+
+                // Reset clears decorations too
+                btnReset.addEventListener('click', () => {
+                    if (textRenderer) {
+                        textRenderer.stopDecorationAutoUpdate();
+                    }
                 });
 
                 // Auto-load a demo pattern if no image is loaded

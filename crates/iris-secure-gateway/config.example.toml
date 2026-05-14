@@ -19,6 +19,10 @@ update_before_expiry_hours = 2
 # 内部 API 认证令牌 - 必须与 iris-wasm-gateway 配置一致
 internal_token = "change-me-in-production"
 
+# 配置服务器 URL - 启用后自动从 iris-secure-config 轮询任务
+config_server_url = "http://127.0.0.1:8081"
+poll_interval_secs = 60
+
 # 文件名映射: 真实文件名 -> 加密名
 [file_mappings]
 "secret/document.pdf" = "abc123"
